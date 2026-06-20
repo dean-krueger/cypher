@@ -1,0 +1,75 @@
+<simulation>
+  <control>
+    <duration>10</duration>
+    <startmonth>1</startmonth>
+    <startyear>2000</startyear>
+  </control>
+  <archetypes>
+    <spec>
+      <lib>agents</lib>
+      <name>NullRegion</name>
+    </spec>
+    <spec>
+      <lib>agents</lib>
+      <name>NullInst</name>
+    </spec>
+    <spec>
+      <lib>cycamore</lib>
+      <name>Source</name>
+    </spec>
+    <spec>
+      <lib>cycamore</lib>
+      <name>Sink</name>
+    </spec>
+  </archetypes>
+  <recipe>
+    <name>Toast</name>
+    <basis>atom</basis>
+    <nuclide>
+      <id>10030000</id>
+      <comp>1.0</comp>
+    </nuclide>
+  </recipe>
+  <facility>
+    <name>Bakery</name>
+    <config>
+      <Source>
+        <outcommod>Toast</outcommod>
+        <throughput>8334</throughput>
+      </Source>
+    </config>
+  </facility>
+  <facility>
+    <name>Bread Store</name>
+    <config>
+      <Sink>
+        <in_commods>
+          <val>Toast</val>
+        </in_commods>
+        <capacity>1000</capacity>
+      </Sink>
+    </config>
+  </facility>
+  <region>
+    <name>OneRegion</name>
+    <config>
+      <NullRegion />
+    </config>
+    <institution>
+      <name>OneInst</name>
+      <initialfacilitylist>
+        <entry>
+          <prototype>Bakery</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>Bread Store</prototype>
+          <number>1</number>
+        </entry>
+      </initialfacilitylist>
+      <config>
+        <NullInst />
+      </config>
+    </institution>
+  </region>
+</simulation>

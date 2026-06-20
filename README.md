@@ -11,8 +11,7 @@ analogous concepts, Cypher should feel familiar to OpenMC users while
 remaining faithful to Cyclus's own model and terminology.
 
 > [!IMPORTANT]
-> Cypher is in pre-alpha development. Its public API has not yet been designed,
-> and it does not yet generate Cyclus inputs.
+> Cypher is in pre-alpha development. Its public API will continue to evolve.
 
 ## Naming
 
@@ -29,6 +28,9 @@ python -m pip install cyclus-cypher
 ```python
 import cypher
 ```
+
+See [Using Cypher](docs/usage.md) and the complete
+[`examples/bakery.py`](examples/bakery.py) authoring example.
 
 ## Development
 

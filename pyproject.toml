@@ -17,7 +17,6 @@ keywords = ["cyclus", "nuclear", "fuel-cycle", "simulation", "xml"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -41,12 +40,18 @@ Homepage = "https://github.com/dean-krueger/cypher"
 Repository = "https://github.com/dean-krueger/cypher"
 Issues = "https://github.com/dean-krueger/cypher/issues"
 
+[project.scripts]
+cypher = "cypher.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+markers = [
+    "integration: requires a runnable Cyclus installation",
+]
 
 [tool.ruff]
 line-length = 88
