@@ -32,6 +32,10 @@ import cypher
 See [Using Cypher](docs/usage.md) and the complete
 [`examples/bakery.py`](examples/bakery.py) authoring example.
 
+Current roadmap documents:
+[milestone two execution](docs/milestone-2.md) and
+[milestone three container](docs/milestone-3.md).
+
 ## Development
 
 Create a virtual environment and install the package with its development

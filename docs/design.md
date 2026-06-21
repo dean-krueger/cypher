@@ -1,17 +1,17 @@
 # Cypher Design Direction
 
-Status: exploratory, pre-alpha  
-Last updated: 2026-06-20
+Status: exploratory, pre-alpha
+Last updated: 2026-06-21
 
 This document records the current product direction. It is intentionally
-revisable: milestone-one implementation and user testing are expected to refine
-the API.
+revisable: implementation and hands-on user testing are expected to refine the
+pre-alpha API.
 
 ## Vision
 
 Cypher is a Python front-end for Cyclus. It should let a user construct a
 simulation from understandable, composable Python objects and export the
-corresponding Cyclus XML.
+corresponding Cyclus XML, then run that model through Cyclus.
 
 The desired experience is inspired by OpenMC's Python input interface: users
 create domain objects, connect them into a larger model, inspect and validate
@@ -56,11 +56,12 @@ import cypher.agents as agents
 import cypher.cycamore as cycamore
 
 simulation = cypher.Simulation(
-    control=cypher.Control(
+    cypher.Control(
         duration=10,
         start_year=2000,
         start_month=1,
-    )
+    ),
+    name="bakery",
 )
 
 simulation.add_library("agents")
@@ -105,6 +106,7 @@ small number of roots to the simulation.
 
 ### Low maintenance
 
+result = simulation.run()
 Cyclus ecosystem projects often outlive the students who first implement them.
 Cypher should therefore avoid designs that require routine synchronization with
 archetype releases. Small dependencies, isolated adapters, fixture-backed tests,
@@ -317,8 +319,7 @@ orchestration of Docker containers is not part of the core design.
 
 ## Execution direction
 
-Simulation execution is deferred until after XML authoring works. The intended
-eventual relationship is:
+Milestone two adds execution without expanding Cypher into an analysis tool:
 
 ```text
 run()
@@ -328,8 +329,24 @@ run()
   → return structured paths, status, stdout, and stderr
 ```
 
-Execution should avoid surprising overwrites and should not expand immediately
-into parameter studies or Cymetric analysis. Those can become separate layers.
+Execution defaults to the current working directory, following OpenMC's model
+execution convention. Unnamed simulations derive `simulation.xml` and
+`simulation.sqlite`; named simulations derive same-stem files. Explicit paths
+and a run directory remain available.
+
+Cypher never overwrites input or output files unless explicitly requested. Each
+run exports the current object state rather than reusing stale XML.
+
+Normal stdout and stderr should stream and be captured by default. This is
+separate from Cyclus log verbosity. Cypher omits `-v` by default and accepts an
+explicit integer verbosity from 0 through 11.
+
+Cypher's responsibility ends with Cyclus process execution and a usable SQLite
+path. Cymetric remains responsible for querying and analyzing that output.
+`RunResult.output_path` is sufficient interoperability; Cypher should not
+duplicate Cymetric's API.
+
+See `docs/milestone-2.md` for the execution contract.
 
 ## Deployment direction
 
@@ -339,25 +356,46 @@ Cypher should work in:
   or another supported mechanism;
 - Cyclus/Cymetric development containers where source directories or inputs are
   mounted;
-- a possible future image containing Cyclus, Cycamore, Cypher, Cymetric, and
-  optionally PyNE.
+- a notebook-ready Cypher image containing Cyclus, Cycamore, Cymetric, and
+  Cypher.
 
 Mounted third-party libraries should become discoverable after they are
 installed into the container's Cyclus environment and `cypher discover` is run.
 
-No container image is required for milestone one.
+Milestone three should build on the official Cymetric image, defaulting to its
+`latest` tag while permitting a pinned tag or digest. The initial image targets
+VS Code Dev Containers and includes IPython, a selectable kernel, a UTF-8
+locale, discovery data, and a bakery smoke test. It should not automatically
+launch JupyterLab.
+
+User notebooks and results live in mounted host directories. Image publication
+is a separate, explicitly authorized action after local validation. PyNE,
+browser-hosted JupyterLab, multi-architecture builds, and mature automated
+publishing are later extensions.
+
+See `docs/milestone-3.md` for the preliminary container roadmap.
+
+## Roadmap
+
+1. Milestone one: metadata-driven authoring and hierarchical XML export.
+2. Milestone two: safe, notebook-friendly Cyclus execution.
+3. Milestone three: a locally validated, notebook-ready ecosystem container.
+4. Later: distribution maturity, parameter studies, reproducible discovery,
+   and broader schema support as real usage demands them.
 
 ## Decisions intentionally deferred
 
 - Reading existing XML and round-trip editing
 - Flat-schema export
-- `Simulation.run()`
-- Cymetric integration and output analysis
 - Parameter studies
-- Docker image publication or host-side Docker control
+- Host-side Docker control
 - Reproducible discovery lockfiles
 - Fully expanded XML containing all defaults
 - Generated comments
+- PyNE integration
+- Browser-hosted JupyterLab and classroom deployment
+- Mature Docker image publishing automation
+- PyPI and Conda publication policy
 - Stable public names for every method shown in examples
 - Long-term compatibility and deprecation policy
 

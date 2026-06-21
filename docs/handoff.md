@@ -1,7 +1,7 @@
 # Project Handoff
 
-Last updated: 2026-06-20  
-Current implementation branch: `milestone-one`
+Last updated: 2026-06-21
+Current planning branch: `milestone-two`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -9,7 +9,8 @@ product direction remains in `docs/design.md`.
 
 ## Current state
 
-Milestone one is implemented but not yet committed on the branch named above.
+Milestone one and its initial help/API refinements are merged into `main`.
+Milestone two is specified in `docs/milestone-2.md` but not yet implemented.
 
 Implemented capabilities:
 
@@ -30,12 +31,17 @@ Implemented capabilities:
 - Deterministic, atomic export of conventional hierarchical Cyclus XML.
 - A complete bakery example in `examples/bakery.py`.
 
-`Simulation.run()`, XML import, output analysis, Docker-image publication, and
-flat-schema export remain deferred.
+The next implementation target is safe, notebook-friendly `Simulation.run()`.
+Cypher will validate, export, invoke Cyclus, stream and capture output, and
+return `RunResult`. Cymetric remains responsible for SQLite analysis.
+
+Milestone three is preliminarily specified in `docs/milestone-3.md`: a locally
+validated VS Code notebook-ready image built on the official Cymetric image.
+Publishing remains a separately authorized manual step.
 
 ## Verification completed
 
-- Fixture-backed suite: 22 tests passed.
+- Fixture-backed suite after initial API refinements: 26 tests passed.
 - One opt-in integration test skipped unless `CYPHER_TEST_CYCLUS` is set.
 - Ruff lint and formatting checks passed.
 - Source distribution and wheel built successfully.
@@ -104,12 +110,13 @@ directory.
 
 ## Suggested next session
 
-1. Review and manually exercise `docs/usage.md` and `examples/bakery.py`.
-2. Record usability surprises, desired spellings, confusing errors, and missing
-   workflows.
-3. Decide whether those findings are milestone-one defects or later features.
-4. Add focused regression tests before changing behavior.
-5. Update this handoff after major implementation or verification changes.
+1. Review `docs/milestone-2.md` as the execution implementation contract.
+2. Implement path resolution, `RunResult`, `RunError`, and process execution in
+   separable layers.
+3. Add fixture-backed execution tests before live subprocess integration.
+4. Run the bakery simulation through `Simulation.run()` in the Cymetric image.
+5. Update `docs/usage.md`, the bakery example, and this handoff.
+6. Begin milestone-three Docker work only after milestone two is reviewed.
 
 ## Feedback collection
 

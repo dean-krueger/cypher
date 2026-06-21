@@ -1,7 +1,7 @@
 # Milestone 1: Bakery XML
 
-Status: proposed for review  
-Last updated: 2026-06-20
+Status: completed and merged
+Last updated: 2026-06-21
 
 ## Goal
 
