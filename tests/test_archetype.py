@@ -14,7 +14,12 @@ def test_discovered_library_import_and_signature(catalog) -> None:
     signature = inspect.signature(cycamore.Source)
 
     assert list(signature.parameters) == ["name", "outcommod", "throughput"]
-    assert "Output commodity" in cycamore.Source.__doc__
+    assert signature.parameters["outcommod"].default is inspect.Parameter.empty
+    assert signature.parameters["throughput"].default == 1.0e299
+    assert "Required fields:\n    outcommod:" in cycamore.Source.__doc__
+    assert "Optional fields:\n    throughput (default: 1e+299):" in (
+        cycamore.Source.__doc__
+    )
 
 
 def test_incremental_configuration_tracks_explicit_defaults(catalog) -> None:

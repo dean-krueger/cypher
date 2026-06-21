@@ -64,7 +64,12 @@ def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
     paths = write_stubs(catalog, tmp_path)
 
     assert {path.name for path in paths} == {"agents.pyi", "cycamore.pyi"}
-    assert "class Source" in (tmp_path / "cycamore.pyi").read_text()
+    cycamore_stub = (tmp_path / "cycamore.pyi").read_text()
+    assert "class Source" in cycamore_stub
+    assert (
+        "name: str | None = ..., *, outcommod: str, throughput: float = ..."
+        in cycamore_stub
+    )
     assert (tmp_path / "py.typed").exists()
 
 
