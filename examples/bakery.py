@@ -15,7 +15,7 @@ def build_simulation() -> cypher.Simulation:
     """Return a small compositional Cyclus simulation."""
 
     simulation = cypher.Simulation(
-        control=cypher.Control(
+        cypher.Control(
             duration=10,
             start_year=2000,
             start_month=1,

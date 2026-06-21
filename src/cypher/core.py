@@ -121,8 +121,8 @@ class Simulation:
 
     def __init__(
         self,
-        *,
         control: Control | None = None,
+        *,
         catalog: Catalog | None = None,
     ) -> None:
         self.control = control
@@ -154,14 +154,23 @@ class Simulation:
     def libraries(self) -> tuple[str, ...]:
         return tuple(self._libraries)
 
-    def add(self, *objects: Recipe | Commodity | Prototype) -> Simulation:
+    def add(self, *objects: Control | Recipe | Commodity | Prototype) -> Simulation:
         """Add one or more root objects; adding the same instance is idempotent."""
 
         for item in objects:
+            if isinstance(item, Control):
+                if self.control is None:
+                    self.control = item
+                elif self.control is not item:
+                    raise ValueError(
+                        "Simulation already has a different control block. "
+                        "Modify the existing block or create a new Simulation."
+                    )
+                continue
             if not isinstance(item, (Recipe, Commodity, Prototype)):
                 raise TypeError(
-                    "Simulation.add accepts Recipe, Commodity, or archetype objects; "
-                    f"got {type(item).__name__}."
+                    "Simulation.add accepts Control, Recipe, Commodity, or "
+                    f"archetype objects; got {type(item).__name__}."
                 )
             if not any(existing is item for existing in self._roots):
                 self._roots.append(item)

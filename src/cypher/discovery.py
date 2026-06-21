@@ -141,10 +141,14 @@ def write_stubs(catalog: Catalog, root: Path | None = None) -> tuple[Path, ...]:
             "",
         ]
         for archetype in catalog.library(library).values():
-            parameters = ["name: str | None = ..."]
-            for field_spec in archetype.fields:
+            parameters = ["name: str | None = ...", "*"]
+            ordered_fields = sorted(
+                archetype.fields, key=lambda field: not field.required
+            )
+            for field_spec in ordered_fields:
                 annotation = _stub_type(field_spec.cpp_type)
-                parameters.append(f"{field_spec.name}: {annotation} = ...")
+                default = "" if field_spec.required else " = ..."
+                parameters.append(f"{field_spec.name}: {annotation}{default}")
             lines.extend(
                 [
                     f"class {archetype.name}(Prototype):",

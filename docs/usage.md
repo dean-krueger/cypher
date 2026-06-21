@@ -43,7 +43,7 @@ import cypher.agents as agents
 import cypher.cycamore as cycamore
 
 simulation = cypher.Simulation(
-    control=cypher.Control(duration=10, start_year=2000, start_month=1)
+    cypher.Control(duration=10, start_year=2000, start_month=1)
 )
 simulation.add_library("agents")
 simulation.add_library("cycamore")
@@ -81,6 +81,13 @@ simulation.export_to_xml("bakery.xml")
 Objects may be configured incrementally. Missing required fields are allowed
 while constructing a model, but `validate()` and `export_to_xml()` report them
 together before writing XML.
+
+The control block may also be added incrementally:
+
+```python
+simulation = cypher.Simulation()
+simulation.add(cypher.Control(duration=10, start_year=2000, start_month=1))
+```
 
 The complete runnable authoring example is in
 [`examples/bakery.py`](../examples/bakery.py).

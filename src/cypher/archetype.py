@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import textwrap
 from collections.abc import Iterator
 from typing import Any
 
@@ -152,14 +153,21 @@ def make_archetype_class(
         )
     ]
     annotations: dict[str, Any] = {"name": str | None}
-    for field in archetype.fields:
+    ordered_fields = sorted(archetype.fields, key=lambda field: not field.required)
+    for field in ordered_fields:
         annotation = _annotation(field)
         annotations[field.name] = annotation
+        if field.required:
+            default = inspect.Parameter.empty
+        elif field.has_default:
+            default = field.default
+        else:
+            default = None
         parameters.append(
             inspect.Parameter(
                 field.name,
                 inspect.Parameter.KEYWORD_ONLY,
-                default=field.default if field.has_default else None,
+                default=default,
                 annotation=annotation,
             )
         )
@@ -181,12 +189,32 @@ def _annotation(field: FieldSpec) -> Any:
 
 
 def _class_doc(archetype: ArchetypeSpec) -> str:
-    lines = [archetype.doc or f"Cyclus archetype {archetype.spec}.", "", "Fields:"]
-    for field in archetype.fields:
-        requirement = "required" if field.required else "optional"
-        default = f"; default={field.default!r}" if field.has_default else ""
+    required = [field for field in archetype.fields if field.required]
+    optional = [field for field in archetype.fields if not field.required]
+    required_names = ", ".join(field.name for field in required) or "none"
+    optional_names = ", ".join(field.name for field in optional) or "none"
+    lines = [
+        f"Required: {required_names}",
+        f"Optional: {optional_names}",
+        "",
+        "Description:",
+        textwrap.indent(archetype.doc or f"Cyclus archetype {archetype.spec}.", "    "),
+        "",
+        "Required fields:",
+    ]
+    if not required:
+        lines.append("    None.")
+    for field in required:
         lines.append(
-            f"    {field.name} ({requirement}{default}): "
+            f"    {field.name}: {field.doc or 'No field documentation supplied.'}"
+        )
+    lines.extend(["", "Optional fields:"])
+    if not optional:
+        lines.append("    None.")
+    for field in optional:
+        default = f" (default: {field.default!r})" if field.has_default else ""
+        lines.append(
+            f"    {field.name}{default}: "
             f"{field.doc or 'No field documentation supplied.'}"
         )
     if archetype.warnings:
