@@ -35,6 +35,7 @@ See [Using Cypher](docs/usage.md) and the complete
 Current roadmap documents:
 [milestone two execution](docs/milestone-2.md) and
 [milestone three container](docs/milestone-3.md).
+See [Cypher Container](docs/container.md) for the local image workflow.
 
 ## Development
 
@@ -54,6 +55,28 @@ ruff check .
 pytest
 python -m build
 python -m twine check dist/*
+```
+
+## Container
+
+Build the notebook-ready image locally:
+
+```console
+docker build -t cypher:local .
+```
+
+The image builds on the official Cymetric environment and includes Cyclus,
+Cycamore, Cymetric, Cypher, IPython, and the `Python (Cypher)` Jupyter kernel.
+Its scientific notebook stack includes NumPy, pandas, Matplotlib, SciPy, and
+Seaborn, plus Graphviz support for Cymetric flow graphs. It is intended for VS
+Code Dev Containers with a mounted `/workspace` rather than launching
+JupyterLab itself.
+
+The current upstream image is Linux `amd64`; multi-architecture support is not
+part of this milestone. The alpha is available with:
+
+```console
+docker pull deankrueger/cypher:alpha
 ```
 
 ## License

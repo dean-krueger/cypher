@@ -1,7 +1,7 @@
 # Cypher Design Direction
 
 Status: exploratory, pre-alpha
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 This document records the current product direction. It is intentionally
 revisable: implementation and hands-on user testing are expected to refine the
@@ -97,16 +97,15 @@ simulation.add(recipe)
 simulation.add(region)
 
 simulation.validate()
-simulation.export_to_xml("bakery.xml")
+result = simulation.run()
 ```
-
 The precise method names remain provisional. The important behavior is that
 users build independent objects, nest or reference them naturally, and add a
+
 small number of roots to the simulation.
 
 ### Low maintenance
 
-result = simulation.run()
 Cyclus ecosystem projects often outlive the students who first implement them.
 Cypher should therefore avoid designs that require routine synchronization with
 archetype releases. Small dependencies, isolated adapters, fixture-backed tests,
@@ -362,24 +361,25 @@ Cypher should work in:
 Mounted third-party libraries should become discoverable after they are
 installed into the container's Cyclus environment and `cypher discover` is run.
 
-Milestone three should build on the official Cymetric image, defaulting to its
-`latest` tag while permitting a pinned tag or digest. The initial image targets
-VS Code Dev Containers and includes IPython, a selectable kernel, a UTF-8
-locale, discovery data, and a bakery smoke test. It should not automatically
-launch JupyterLab.
+Milestone three builds on the official Cymetric image, defaulting to its
+`latest` tag while permitting a pinned tag or digest. The image targets VS Code
+Dev Containers and includes IPython, a selectable kernel, a UTF-8 locale,
+discovery data, scientific Python packages, Graphviz, and a bakery smoke test.
+It does not automatically launch JupyterLab.
 
-User notebooks and results live in mounted host directories. Image publication
-is a separate, explicitly authorized action after local validation. PyNE,
-browser-hosted JupyterLab, multi-architecture builds, and mature automated
-publishing are later extensions.
+User notebooks and results live in mounted host directories. The first Linux
+`amd64` alpha is published as `deankrueger/cypher:alpha` and
+`deankrueger/cypher:0.1.0-alpha.1`. PyNE, browser-hosted JupyterLab,
+multi-architecture builds, and mature automated publishing are later
+extensions.
 
-See `docs/milestone-3.md` for the preliminary container roadmap.
+See `docs/milestone-3.md` for the completed container milestone.
 
 ## Roadmap
 
 1. Milestone one: metadata-driven authoring and hierarchical XML export.
 2. Milestone two: safe, notebook-friendly Cyclus execution.
-3. Milestone three: a locally validated, notebook-ready ecosystem container.
+3. Milestone three: a published alpha of the notebook-ready ecosystem container.
 4. Later: distribution maturity, parameter studies, reproducible discovery,
    and broader schema support as real usage demands them.
 

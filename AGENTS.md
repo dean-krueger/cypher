@@ -1,8 +1,9 @@
 # Cypher Contributor Guidance
 
 This file contains durable instructions for humans and coding agents working in
-this repository. Product direction belongs in `docs/design.md`; the active
-implementation target belongs in `docs/milestone-2.md`.
+this repository. Product direction belongs in `docs/design.md`; completed
+implementation targets are recorded in the milestone documents and current
+short-term state belongs in `docs/handoff.md`.
 
 ## Project purpose
 

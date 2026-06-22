@@ -1,7 +1,7 @@
 # Project Handoff
 
-Last updated: 2026-06-21
-Current planning branch: `milestone-two`
+Last updated: 2026-06-22
+Current planning branch: `milestone-three`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -9,9 +9,9 @@ product direction remains in `docs/design.md`.
 
 ## Current state
 
-Milestone one and its initial help/API refinements are merged into `main`.
-Milestone two is implemented on `milestone-two` and awaiting user review and
-merge.
+Milestones one and two are merged into `main`. Milestone three is implemented
+on `milestone-three`, published to Docker Hub as an alpha, and successfully
+tested on a second Linux computer.
 
 Implemented capabilities:
 
@@ -38,17 +38,20 @@ Implemented capabilities:
 - Cyclus verbosity levels and guarded advanced CLI arguments.
 - Structured `RunResult`, `RunError`, and preflight `RunConfigurationError`.
 - A complete runnable bakery example in `examples/bakery.py`.
+- A notebook-ready Linux `amd64` image based on the official Cymetric image.
+- Preinstalled IPython and a registered `Python (Cypher)` Jupyter kernel.
+- A scientific notebook stack containing NumPy, pandas, Matplotlib, SciPy, and
+  Seaborn.
+- Graphviz system and Python support for Cymetric flow graphs.
+- Build-time discovery, component verification, real kernel launch, and bakery
+  smoke test.
 
 Cypher's workflow intentionally ends at the SQLite output. Cymetric remains
 responsible for database querying and analysis.
 
-Milestone three is preliminarily specified in `docs/milestone-3.md`: a locally
-validated VS Code notebook-ready image built on the official Cymetric image.
-Publishing remains a separately authorized manual step.
-
 ## Verification completed
 
-- Fixture-backed suite after milestone-two implementation: 57 tests passed.
+- Fixture-backed suite after milestone-three implementation: 58 tests passed.
 - One opt-in integration test skipped unless `CYPHER_TEST_CYCLUS` is set.
 - Ruff lint and formatting checks passed.
 - Source distribution and wheel built successfully.
@@ -63,6 +66,20 @@ Publishing remains a separately authorized manual step.
 - The milestone-two bakery workflow ran through `Simulation.run()` in the
   Cymetric container, streamed normal output, returned a successful
   `RunResult`, and produced a nonempty SQLite database.
+- Local image `cypher:milestone-3` built successfully from the official
+  Cymetric image.
+- Image verification confirmed Cyclus, Cycamore, Cymetric, Cypher, IPython,
+  ipykernel, the discovery cache, and a valid UTF-8 locale.
+- The registered `Python (Cypher)` kernel launched and imported Cypher.
+- A detached `sleep infinity` container with a host-mounted `/workspace` ran
+  the bakery simulation and persisted readable XML and SQLite files.
+- Final image architecture: Linux `amd64`; image ID begins
+  `sha256:e3e57faee23f` and size is approximately 891 MB.
+- Docker Hub tags `deankrueger/cypher:alpha` and
+  `deankrueger/cypher:0.1.0-alpha.1` reference that image.
+- The published alpha was pulled and exercised through VS Code Dev Containers
+  on a second Linux computer; imports, notebooks, simulation execution,
+  scientific packages, and Cymetric Graphviz support worked.
 
 The original GitHub packaging checks failed because modern setuptools rejects
 the legacy BSD license classifier when a PEP 639 license expression is also
@@ -70,34 +87,27 @@ present. The redundant classifier has been removed.
 
 ## Docker development workflow
 
-Mounting the repository makes its files visible but does not install the Python
-package. Use either an editable install:
+Build the repository image:
 
 ```console
-python -m pip install -e /cypher
-cypher discover
+docker build -t cypher:milestone-3 .
 ```
 
-or, for a quick source-tree experiment:
+Start the VS Code Dev Containers target with a persistent host workspace:
 
 ```console
-export PYTHONPATH=/cypher/src
-python -m cypher discover
+docker run -d \
+  --name cypher-dev \
+  -v "$PWD/my_project:/workspace" \
+  -w /workspace \
+  cypher:milestone-3 \
+  sleep infinity
 ```
 
-The editable install is preferred because it also installs the `cypher`
-command. Run discovery inside the same container/environment whose Cyclus and
-archetype libraries should be used.
-
-The existing Cymetric image already contains runnable Cyclus and Cycamore
-installations. Mounting and rebuilding separate Cyclus/Cycamore source trees is
-only necessary when testing changes to those source versions. If rebuilt, they
-must also be installed or exposed through the normal Cyclus executable and
-module search environment before running discovery.
-
-Jupyter or IPython must separately be available in the selected image. A
-notebook server also requires a published port and an appropriate working
-directory.
+Attach VS Code to `cypher-dev`, open `/workspace`, and choose
+`Python (Cypher)` for notebooks. Cypher, Cyclus, Cycamore, Cymetric, and the
+discovery cache are already installed. Full instructions are in
+`docs/container.md`.
 
 ## Known limitations and design notes
 
@@ -116,14 +126,17 @@ directory.
   `Simulation.add_library()` currently acts as an availability assertion and
   requires used archetypes to come from an added library.
 - Optional/defaulted archetype fields are omitted unless explicitly assigned.
+- The official Cymetric base and current Cypher image are Linux `amd64` only;
+  multi-architecture and native Apple Silicon support are out of scope.
 - The public API remains pre-alpha and should be refined from hands-on use.
 
 ## Suggested next session
 
-1. Review and exercise the milestone-two `Simulation.run()` API.
-2. Record any usability refinements before merging `milestone-two`.
-3. Begin milestone-three Docker work only after milestone two is reviewed and
-   merged.
+1. Merge the reviewed `milestone-three` branch.
+2. Gather usability feedback from additional Cyclus users.
+3. Define the next milestone only after prioritizing that feedback; likely
+   candidates include distribution polish, broader examples, and generated
+   editor-interface refinement.
 
 ## Feedback collection
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -38,12 +39,17 @@ def export_xml(simulation: Simulation, path: Path) -> Path:
     content = simulation.to_xml()
     target = path.expanduser()
     target.parent.mkdir(parents=True, exist_ok=True)
+    permissions = None
+    if os.name == "posix":
+        permissions = stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".tmp", dir=target.parent, text=True
     )
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
             stream.write(content)
+        if permissions is not None:
+            os.chmod(temporary_name, permissions)
         os.replace(temporary_name, target)
     except BaseException:
         try:

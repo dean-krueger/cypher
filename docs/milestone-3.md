@@ -1,7 +1,7 @@
 # Milestone 3: Notebook-Ready Container
 
-Status: preliminary roadmap
-Last updated: 2026-06-21
+Status: implemented, published as an alpha, and validated on a second machine
+Last updated: 2026-06-22
 
 ## Goal
 
@@ -11,6 +11,8 @@ containing:
 - Cyclus;
 - Cycamore;
 - Cymetric;
+- NumPy, pandas, Matplotlib, SciPy, and Seaborn;
+- Graphviz system and Python support for Cymetric flow graphs;
 - Cypher;
 - IPython and a VS Code-selectable Jupyter kernel;
 - a valid UTF-8 locale.
@@ -71,9 +73,22 @@ mounted third-party archetype library, the user reruns:
 cypher discover
 ```
 
+## Completed publication
+
+The Linux `amd64` image was published to Docker Hub as:
+
+```text
+deankrueger/cypher:alpha
+deankrueger/cypher:0.1.0-alpha.1
+```
+
+The published image was pulled and successfully tested through the intended
+VS Code Dev Containers notebook workflow on a second Linux computer.
+
 ## Local validation and publication boundary
 
-Milestone three first produces a locally built and validated image.
+Milestone three first produced a locally built and validated image. Publication
+then occurred manually after explicit user authorization.
 
 Cypher may prepare:
 
@@ -83,9 +98,8 @@ Cypher may prepare:
 - a bakery health/smoke test;
 - candidate Docker Hub tags and commands.
 
-Cypher must not log in to Docker Hub, create repositories, or push images
-without explicit user authorization. Manual publishing guidance follows local
-validation.
+Future Docker Hub logins, repository changes, and image pushes still require
+explicit user authorization.
 
 Possible later tags include:
 
