@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import cypher
 import cypher.agents as agents
 import cypher.cycamore as cycamore
+
+import cypher
 
 
 def build_simulation() -> cypher.Simulation:

@@ -4,8 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import cypher
 import pytest
+
+import cypher
 from cypher.errors import RunConfigurationError, RunError, ValidationError
 from cypher.execution import resolve_run_paths, run_command
 
