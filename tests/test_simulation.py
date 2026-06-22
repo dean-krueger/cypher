@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -50,6 +52,17 @@ def test_export_is_deterministic_and_atomic(catalog, tmp_path: Path) -> None:
 
     assert path.read_bytes() == first
     assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions only")
+def test_new_export_is_readable_outside_the_container_user(
+    catalog, tmp_path: Path
+) -> None:
+    path = tmp_path / "bakery.xml"
+
+    bakery(catalog).export_to_xml(path)
+
+    assert stat.S_IMODE(path.stat().st_mode) == 0o644
 
 
 def test_nested_objects_are_collected_recursively(catalog) -> None:
