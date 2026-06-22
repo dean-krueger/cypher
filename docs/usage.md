@@ -1,8 +1,8 @@
 # Using Cypher
 
-Cypher is pre-alpha. The milestone-one interface discovers installed Cyclus
-archetypes, builds a simulation from Python objects, and exports readable
-hierarchical Cyclus XML.
+Cypher is pre-alpha. It discovers installed Cyclus archetypes, builds a
+simulation from Python objects, exports readable hierarchical XML, and runs
+that input through Cyclus.
 
 ## Discover the Cyclus environment
 
@@ -35,7 +35,7 @@ Inspect the cached report later with:
 cypher compatibility
 ```
 
-## Build and export a simulation
+## Build a simulation
 
 ```python
 import cypher
@@ -43,7 +43,8 @@ import cypher.agents as agents
 import cypher.cycamore as cycamore
 
 simulation = cypher.Simulation(
-    cypher.Control(duration=10, start_year=2000, start_month=1)
+    cypher.Control(duration=10, start_year=2000, start_month=1),
+    name="bakery",
 )
 simulation.add_library("agents")
 simulation.add_library("cycamore")
@@ -94,12 +95,68 @@ The complete runnable authoring example is in
 
 ## Run Cyclus
 
-Simulation execution from Python is deferred to milestone two. Run the exported
-input with the same environment used for discovery:
+Run the current object graph directly from Python:
 
-```console
-cyclus bakery.xml -o bakery.sqlite
+```python
+result = simulation.run()
 ```
 
-Within Docker, run Cypher inside the Cyclus container so executable resolution,
-discovery, and validation all observe the same installed libraries.
+Every run validates the model, exports fresh XML, invokes Cyclus, streams its
+normal output, and captures that output in the returned `RunResult`. The named
+simulation above creates `bakery.xml` and `bakery.sqlite` in the current working
+directory. An unnamed simulation uses `simulation.xml` and
+`simulation.sqlite`.
+
+The result is convenient to inspect in a notebook:
+
+```python
+result.success
+result.input_path
+result.output_path
+result.returncode
+result.stdout
+result.stderr
+result.command
+```
+
+Existing input or output files are protected by default. Opt into replacement
+explicitly:
+
+```python
+result = simulation.run(overwrite=True)
+```
+
+Paths can be stored on the simulation or supplied for one run. If only the
+input is named, the SQLite output receives the same stem:
+
+```python
+result = simulation.run(
+    directory="study/case-1",
+    input_path="my_sim.xml",
+)
+# study/case-1/my_sim.xml
+# study/case-1/my_sim.sqlite
+```
+
+`stream_output=False` captures Cyclus output without displaying it. Cyclus
+verbosity remains a separate integer setting from 0 through 11; leaving it as
+`None` preserves the executable's native default:
+
+```python
+result = simulation.run(stream_output=False, verbosity=6)
+```
+
+Less common Cyclus CLI options may be passed as individual strings with
+`extra_args`. Cypher rejects input, output, and verbosity flags there because
+it owns those settings:
+
+```python
+result = simulation.run(extra_args=["--warn-limit", "100"])
+```
+
+On a nonzero Cyclus exit, `run()` raises `cypher.RunError`; its `.result`
+contains the command, return code, paths, stdout, and stderr for diagnosis.
+
+Run Cypher inside the same native, Conda, or container environment used for
+discovery so validation and execution observe the same libraries. Cypher's
+workflow ends at the SQLite output; use Cymetric for querying and analysis.

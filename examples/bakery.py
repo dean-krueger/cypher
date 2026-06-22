@@ -1,14 +1,13 @@
-"""Build the milestone-one bakery simulation and export its Cyclus XML."""
+"""Build and run the bakery simulation through Cypher."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
+import cypher
 import cypher.agents as agents
 import cypher.cycamore as cycamore
-
-import cypher
 
 
 def build_simulation() -> cypher.Simulation:
@@ -19,7 +18,8 @@ def build_simulation() -> cypher.Simulation:
             duration=10,
             start_year=2000,
             start_month=1,
-        )
+        ),
+        name="bakery",
     )
     simulation.add_library("agents")
     simulation.add_library("cycamore")
@@ -52,11 +52,18 @@ def build_simulation() -> cypher.Simulation:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("output", nargs="?", type=Path, default=Path("bakery.xml"))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--directory", type=Path, default=Path("."))
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--verbosity", type=int, choices=range(12))
     arguments = parser.parse_args()
-    build_simulation().export_to_xml(arguments.output)
-    print(arguments.output)
+    result = build_simulation().run(
+        directory=arguments.directory,
+        overwrite=arguments.overwrite,
+        verbosity=arguments.verbosity,
+    )
+    print()
+    print(result)
     return 0
 
 

@@ -10,7 +10,8 @@ product direction remains in `docs/design.md`.
 ## Current state
 
 Milestone one and its initial help/API refinements are merged into `main`.
-Milestone two is specified in `docs/milestone-2.md` but not yet implemented.
+Milestone two is implemented on `milestone-two` and awaiting user review and
+merge.
 
 Implemented capabilities:
 
@@ -29,11 +30,17 @@ Implemented capabilities:
 - Recursive object/dependency collection.
 - Consolidated simulation validation.
 - Deterministic, atomic export of conventional hierarchical Cyclus XML.
-- A complete bakery example in `examples/bakery.py`.
+- Safe, notebook-friendly `Simulation.run()` execution.
+- Predictable input/output naming with persistent defaults and per-run
+  overrides.
+- No-overwrite-by-default behavior and explicit replacement.
+- Live output streaming with complete stdout/stderr capture.
+- Cyclus verbosity levels and guarded advanced CLI arguments.
+- Structured `RunResult`, `RunError`, and preflight `RunConfigurationError`.
+- A complete runnable bakery example in `examples/bakery.py`.
 
-The next implementation target is safe, notebook-friendly `Simulation.run()`.
-Cypher will validate, export, invoke Cyclus, stream and capture output, and
-return `RunResult`. Cymetric remains responsible for SQLite analysis.
+Cypher's workflow intentionally ends at the SQLite output. Cymetric remains
+responsible for database querying and analysis.
 
 Milestone three is preliminarily specified in `docs/milestone-3.md`: a locally
 validated VS Code notebook-ready image built on the official Cymetric image.
@@ -41,7 +48,7 @@ Publishing remains a separately authorized manual step.
 
 ## Verification completed
 
-- Fixture-backed suite after initial API refinements: 26 tests passed.
+- Fixture-backed suite after milestone-two implementation: 57 tests passed.
 - One opt-in integration test skipped unless `CYPHER_TEST_CYCLUS` is set.
 - Ruff lint and formatting checks passed.
 - Source distribution and wheel built successfully.
@@ -53,6 +60,9 @@ Publishing remains a separately authorized manual step.
 - Live discovery found 19 archetypes across `agents` and `cycamore`.
 - The bakery example exported XML that Cyclus accepted and ran successfully,
   producing a SQLite output.
+- The milestone-two bakery workflow ran through `Simulation.run()` in the
+  Cymetric container, streamed normal output, returned a successful
+  `RunResult`, and produced a nonempty SQLite database.
 
 The original GitHub packaging checks failed because modern setuptools rejects
 the legacy BSD license classifier when a PEP 639 license expression is also
@@ -110,13 +120,10 @@ directory.
 
 ## Suggested next session
 
-1. Review `docs/milestone-2.md` as the execution implementation contract.
-2. Implement path resolution, `RunResult`, `RunError`, and process execution in
-   separable layers.
-3. Add fixture-backed execution tests before live subprocess integration.
-4. Run the bakery simulation through `Simulation.run()` in the Cymetric image.
-5. Update `docs/usage.md`, the bakery example, and this handoff.
-6. Begin milestone-three Docker work only after milestone two is reviewed.
+1. Review and exercise the milestone-two `Simulation.run()` API.
+2. Record any usability refinements before merging `milestone-two`.
+3. Begin milestone-three Docker work only after milestone two is reviewed and
+   merged.
 
 ## Feedback collection
 

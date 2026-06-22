@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .archetype import Prototype
 from .catalog import Catalog, get_catalog
 from .errors import DiscoveryError, ValidationError
+
+if TYPE_CHECKING:
+    from .execution import RunResult
 
 
 @dataclass
@@ -123,12 +126,35 @@ class Simulation:
         self,
         control: Control | None = None,
         *,
+        name: str | None = None,
+        input_path: str | Path | None = None,
+        output_path: str | Path | None = None,
         catalog: Catalog | None = None,
     ) -> None:
         self.control = control
+        self._name: str | None = None
+        self.name = name
+        self.input_path = (
+            Path(input_path).expanduser() if input_path is not None else None
+        )
+        self.output_path = (
+            Path(output_path).expanduser() if output_path is not None else None
+        )
         self._catalog = catalog
         self._roots: list[Recipe | Commodity | Prototype] = []
         self._libraries: list[str] = []
+
+    @property
+    def name(self) -> str | None:
+        """Human-readable simulation name used to derive run filenames."""
+
+        return self._name
+
+    @name.setter
+    def name(self, value: str | None) -> None:
+        from .execution import normalize_simulation_name
+
+        self._name = normalize_simulation_name(value)
 
     @property
     def catalog(self) -> Catalog | None:
@@ -298,6 +324,34 @@ class Simulation:
         from .xml import export_xml
 
         return export_xml(self, Path(path))
+
+    def run(
+        self,
+        *,
+        directory: str | Path = ".",
+        input_path: str | Path | None = None,
+        output_path: str | Path | None = None,
+        overwrite: bool = False,
+        stream_output: bool = True,
+        verbosity: int | None = None,
+        extra_args: list[str] | tuple[str, ...] | None = None,
+        cyclus_executable: str | Path | None = None,
+    ) -> RunResult:
+        """Validate, export, and run this simulation through Cyclus."""
+
+        from .execution import run_simulation
+
+        return run_simulation(
+            self,
+            directory=directory,
+            input_path=input_path,
+            output_path=output_path,
+            overwrite=overwrite,
+            stream_output=stream_output,
+            verbosity=verbosity,
+            extra_args=extra_args,
+            cyclus_executable=cyclus_executable,
+        )
 
 
 def _duplicate_name_problems(graph: Graph) -> list[str]:

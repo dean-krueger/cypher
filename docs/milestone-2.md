@@ -1,6 +1,6 @@
 # Milestone 2: Run Cyclus
 
-Status: proposed for review
+Status: implemented on `milestone-two`
 Last updated: 2026-06-21
 
 ## Goal
