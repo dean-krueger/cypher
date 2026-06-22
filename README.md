@@ -2,8 +2,8 @@
 
 Cypher is a Python front-end for
 [Cyclus](https://github.com/cyclus/cyclus), an agent-based nuclear fuel cycle
-simulator. It aims to let users define Cyclus simulations with composable
-Python objects and generate the corresponding Cyclus XML input.
+simulator. It lets users define Cyclus simulations with composable Python
+objects, generate readable XML inputs, and run them through Cyclus.
 
 The project takes inspiration from the Python input API provided by
 [OpenMC](https://github.com/openmc-dev/openmc). Where the two simulators have
@@ -31,6 +31,10 @@ import cypher
 
 See [Using Cypher](docs/usage.md) and the complete
 [`examples/bakery.py`](examples/bakery.py) authoring example.
+
+Current roadmap documents:
+[milestone two execution](docs/milestone-2.md) and
+[milestone three container](docs/milestone-3.md).
 
 ## Development
 

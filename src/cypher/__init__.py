@@ -14,8 +14,11 @@ from .errors import (
     CyclusInvocationError,
     CypherError,
     DiscoveryError,
+    RunConfigurationError,
+    RunError,
     ValidationError,
 )
+from .execution import RunResult
 
 install_library_finder()
 
@@ -27,6 +30,9 @@ __all__ = [
     "CypherError",
     "DiscoveryError",
     "Recipe",
+    "RunConfigurationError",
+    "RunError",
+    "RunResult",
     "Simulation",
     "ValidationError",
     "__version__",

@@ -1,8 +1,8 @@
 # Cypher Contributor Guidance
 
 This file contains durable instructions for humans and coding agents working in
-this repository. Product direction belongs in `docs/design.md`, and the current
-implementation target belongs in `docs/milestone-1.md`.
+this repository. Product direction belongs in `docs/design.md`; the active
+implementation target belongs in `docs/milestone-2.md`.
 
 ## Project purpose
 
@@ -119,6 +119,19 @@ metadata-driven archetype support.
 - Cyclus validation is required in integration coverage, but ordinary unit
   tests must not require a Cyclus installation.
 
+## Execution boundaries
+
+- `Simulation.run()` validates and exports fresh XML before every execution.
+- Cypher owns authoring and process execution; Cymetric owns SQLite analysis.
+- Never overwrite XML or SQLite files unless the user explicitly opts in.
+- Keep normal output streaming separate from Cyclus `-v` log verbosity.
+- Omit `-v` by default; when requested, accept only integer levels 0 through 11.
+- Invoke Cyclus without a shell and preserve its argument vector for diagnostics.
+- Failed processes must raise clearly while retaining their captured result and
+  generated XML for debugging.
+- Unit tests use a replaceable process boundary; real execution remains
+  separately selectable integration coverage.
+
 ## Dependency and implementation discipline
 
 - Prefer the Python standard library and a small dependency surface.
@@ -127,9 +140,8 @@ metadata-driven archetype support.
 - Keep serialization independent of discovery so fixture-backed unit tests can
   exercise it.
 - Favor reversible designs while the public API is pre-alpha.
-- Do not implement XML import, simulation execution, output analysis, parameter
-  studies, Docker orchestration, or package publishing unless the current task
-  explicitly includes them.
+- Do not implement XML import, output analysis, parameter studies, Docker
+  orchestration, or package publishing unless the current task includes them.
 - Do not register names, upload distributions, publish containers, push
   branches, or create releases without explicit user authorization.
 
