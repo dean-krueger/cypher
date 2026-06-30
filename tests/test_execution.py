@@ -14,6 +14,7 @@ from cypher.execution import resolve_run_paths, run_command
 def valid_simulation(**kwargs) -> cypher.Simulation:
     return cypher.Simulation(
         cypher.Control(duration=1, start_year=2000, start_month=1),
+        schema_path=None,
         **kwargs,
     )
 
@@ -249,7 +250,9 @@ def test_invalid_simulation_fails_before_execution(monkeypatch, tmp_path: Path) 
     calls = install_fake_execution(monkeypatch)
 
     with pytest.raises(ValidationError):
-        cypher.Simulation().run(directory=tmp_path, cyclus_executable="/fake/cyclus")
+        cypher.Simulation(schema_path=None).run(
+            directory=tmp_path, cyclus_executable="/fake/cyclus"
+        )
 
     assert calls == []
 

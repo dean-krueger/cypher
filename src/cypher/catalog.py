@@ -75,6 +75,7 @@ class Catalog:
     executable: str | None = None
     cyclus_version: str | None = None
     executable_mtime_ns: int | None = None
+    base_schema_path: str | None = None
     discovery_warnings: tuple[str, ...] = ()
     format_version: int = 1
     _libraries: dict[str, dict[str, ArchetypeSpec]] = field(
@@ -119,6 +120,7 @@ class Catalog:
         executable: str | None = None,
         cyclus_version: str | None = None,
         executable_mtime_ns: int | None = None,
+        base_schema_path: str | None = None,
         discovery_warnings: tuple[str, ...] = (),
     ) -> Catalog:
         annotations = metadata.get("annotations")
@@ -158,6 +160,7 @@ class Catalog:
             executable=executable,
             cyclus_version=cyclus_version,
             executable_mtime_ns=executable_mtime_ns,
+            base_schema_path=base_schema_path,
             discovery_warnings=discovery_warnings,
         )
 
@@ -167,6 +170,7 @@ class Catalog:
             "executable": self.executable,
             "cyclus_version": self.cyclus_version,
             "executable_mtime_ns": self.executable_mtime_ns,
+            "base_schema_path": self.base_schema_path,
             "discovery_warnings": list(self.discovery_warnings),
             "archetypes": {
                 spec: asdict(archetype) for spec, archetype in self.archetypes.items()
@@ -197,6 +201,7 @@ class Catalog:
             executable=data.get("executable"),
             cyclus_version=data.get("cyclus_version"),
             executable_mtime_ns=data.get("executable_mtime_ns"),
+            base_schema_path=data.get("base_schema_path"),
             discovery_warnings=tuple(data.get("discovery_warnings", ())),
             format_version=data["format_version"],
         )

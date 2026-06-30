@@ -60,6 +60,27 @@ def test_invocation_error_contains_loader_output(monkeypatch, tmp_path: Path) ->
         adapter.metadata()
 
 
+def test_base_schema_path_uses_cyclus_rng_schema(monkeypatch, tmp_path: Path) -> None:
+    executable = _executable(tmp_path / "cyclus")
+
+    def fake_run(command, **_kwargs):
+        assert command == [str(executable.resolve()), "--rng-schema"]
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="/opt/cyclus/share/cyclus/cyclus.rng.in\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr("cypher.discovery.subprocess.run", fake_run)
+    adapter = CyclusAdapter(executable)
+
+    path, warnings = adapter.base_schema_path()
+
+    assert path == "/opt/cyclus/share/cyclus/cyclus.rng.in"
+    assert warnings == ()
+
+
 def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
     paths = write_stubs(catalog, tmp_path)
 
@@ -76,4 +97,5 @@ def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
 def test_compatibility_report_identifies_environment(catalog) -> None:
     report = compatibility_report(catalog)
     assert "/opt/cyclus/bin/cyclus" in report
+    assert "/opt/cyclus/share/cyclus/cyclus.rng.in" in report
     assert "agents, cycamore" in report

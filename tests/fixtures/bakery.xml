@@ -1,8 +1,9 @@
+<?xml-model href="/opt/cyclus/share/cyclus/cyclus.rng.in" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <simulation>
   <control>
     <duration>10</duration>
-    <startmonth>1</startmonth>
     <startyear>2000</startyear>
+    <startmonth>1</startmonth>
   </control>
   <archetypes>
     <spec>

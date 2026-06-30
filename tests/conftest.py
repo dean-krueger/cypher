@@ -105,6 +105,7 @@ def catalog(metadata: dict[str, object]) -> Catalog:
         metadata,
         executable="/opt/cyclus/bin/cyclus",
         cyclus_version="cyclus version fixture",
+        base_schema_path="/opt/cyclus/share/cyclus/cyclus.rng.in",
     )
     set_catalog(value)
     yield value

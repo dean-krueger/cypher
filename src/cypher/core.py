@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -13,38 +14,120 @@ from .errors import DiscoveryError, ValidationError
 if TYPE_CHECKING:
     from .execution import RunResult
 
+AUTO_SCHEMA_PATH = "auto"
+SchemaPath = str | Path | None | bool
+
+
+@dataclass
+class ControlField:
+    """Metadata for one scalar field in the Cyclus control block."""
+
+    name: str
+    xml_name: str
+    required: bool = False
+    type_: type[Any] = str
+    minimum: int | float | None = None
+    maximum: int | float | None = None
+    choices: tuple[str, ...] = ()
+
+
+CONTROL_FIELDS: tuple[ControlField, ...] = (
+    ControlField("simhandle", "simhandle", type_=str),
+    ControlField("duration", "duration", required=True, type_=int, minimum=0),
+    ControlField("start_year", "startyear", required=True, type_=int, minimum=0),
+    ControlField(
+        "start_month", "startmonth", required=True, type_=int, minimum=1, maximum=12
+    ),
+    ControlField("decay", "decay", type_=str, choices=("never", "manual", "lazy")),
+    ControlField("dt", "dt", type_=int, minimum=0),
+    ControlField("explicit_inventory", "explicit_inventory", type_=bool),
+    ControlField(
+        "explicit_inventory_compact", "explicit_inventory_compact", type_=bool
+    ),
+    ControlField("tolerance_generic", "tolerance_generic", type_=float),
+    ControlField("tolerance_resource", "tolerance_resource", type_=float),
+    ControlField("seed", "seed", type_=int, minimum=1),
+    ControlField("stride", "stride", type_=int, minimum=1),
+)
+_CONTROL_FIELD_BY_NAME = {field.name: field for field in CONTROL_FIELDS}
+
 
 @dataclass
 class Control:
     """Core Cyclus simulation control settings."""
 
+    simhandle: str | None = None
     duration: int | None = None
     start_year: int | None = None
     start_month: int | None = None
+    decay: str | None = None
+    dt: int | None = None
+    explicit_inventory: bool | None = None
+    explicit_inventory_compact: bool | None = None
+    tolerance_generic: float | None = None
+    tolerance_resource: float | None = None
+    seed: int | None = None
+    stride: int | None = None
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        field = _CONTROL_FIELD_BY_NAME.get(name)
+        if field is not None and value is not None:
+            problem = _control_field_problem(field, value)
+            if problem is not None:
+                raise ValueError(problem)
+        super().__setattr__(name, value)
 
     def validation_problems(self) -> list[str]:
         problems = []
-        if self.duration is None:
-            problems.append("control is missing required field 'duration'")
-        elif isinstance(self.duration, bool) or not isinstance(self.duration, int):
-            problems.append("control duration must be an integer")
-        elif self.duration < 0:
-            problems.append("control duration must be nonnegative")
-        if self.start_year is None:
-            problems.append("control is missing required field 'start_year'")
-        elif isinstance(self.start_year, bool) or not isinstance(self.start_year, int):
-            problems.append("control start_year must be an integer")
-        elif self.start_year < 0:
-            problems.append("control start_year must be nonnegative")
-        if self.start_month is None:
-            problems.append("control is missing required field 'start_month'")
-        elif isinstance(self.start_month, bool) or not isinstance(
-            self.start_month, int
-        ):
-            problems.append("control start_month must be an integer")
-        elif not 1 <= self.start_month <= 12:
-            problems.append("control start_month must be between 1 and 12")
+        for field in CONTROL_FIELDS:
+            value = getattr(self, field.name)
+            if value is None:
+                if field.required:
+                    problems.append(
+                        f"control is missing required field {field.name!r}"
+                    )
+                continue
+            problem = _control_field_problem(field, value)
+            if problem is not None:
+                problems.append(problem)
         return problems
+
+    def explicit_items(self) -> tuple[tuple[ControlField, Any], ...]:
+        """Return supplied control values in Cyclus grammar order."""
+
+        return tuple(
+            (field, value)
+            for field in CONTROL_FIELDS
+            if (value := getattr(self, field.name)) is not None
+        )
+
+
+def _control_field_problem(field: ControlField, value: Any) -> str | None:
+    label = field.name
+    if field.type_ is bool:
+        if not isinstance(value, bool):
+            return f"control {label} must be a boolean"
+    elif field.type_ is int:
+        if isinstance(value, bool) or not isinstance(value, int):
+            return f"control {label} must be an integer"
+    elif field.type_ is float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return f"control {label} must be a number"
+    elif field.type_ is str and not isinstance(value, str):
+        return f"control {label} must be a string"
+    if isinstance(value, str):
+        if not value.strip():
+            return f"control {label} must be a nonempty string"
+        if field.choices and value not in field.choices:
+            allowed = ", ".join(repr(choice) for choice in field.choices)
+            return f"control {label} must be one of {allowed}"
+    if field.minimum is not None and value < field.minimum:
+        if field.minimum == 0:
+            return f"control {label} must be nonnegative"
+        return f"control {label} must be at least {field.minimum}"
+    if field.maximum is not None and value > field.maximum:
+        return f"control {label} must be at most {field.maximum}"
+    return None
 
 
 @dataclass
@@ -129,6 +212,7 @@ class Simulation:
         name: str | None = None,
         input_path: str | Path | None = None,
         output_path: str | Path | None = None,
+        schema_path: SchemaPath = AUTO_SCHEMA_PATH,
         catalog: Catalog | None = None,
     ) -> None:
         self.control = control
@@ -140,6 +224,7 @@ class Simulation:
         self.output_path = (
             Path(output_path).expanduser() if output_path is not None else None
         )
+        self.schema_path = schema_path
         self._catalog = catalog
         self._roots: list[Recipe | Commodity | Prototype] = []
         self._libraries: list[str] = []
@@ -310,20 +395,57 @@ class Simulation:
         if problems:
             raise ValidationError(problems)
 
-    def to_xml(self) -> str:
+    def to_xml(
+        self,
+        *,
+        schema_path: SchemaPath = AUTO_SCHEMA_PATH,
+        output_path: str | Path | None = None,
+    ) -> str:
         """Validate and return deterministic hierarchical Cyclus XML."""
 
         from .xml import simulation_xml
 
         self.validate()
-        return simulation_xml(self)
+        return simulation_xml(
+            self,
+            schema_path=self._resolve_schema_path(schema_path),
+            output_path=output_path,
+        )
 
-    def export_to_xml(self, path: str | Path) -> Path:
+    def export_to_xml(
+        self,
+        path: str | Path,
+        *,
+        schema_path: SchemaPath = AUTO_SCHEMA_PATH,
+    ) -> Path:
         """Validate and atomically write hierarchical Cyclus XML."""
 
         from .xml import export_xml
 
-        return export_xml(self, Path(path))
+        return export_xml(
+            self, Path(path), schema_path=self._resolve_schema_path(schema_path)
+        )
+
+    def _resolve_schema_path(
+        self, override: SchemaPath = AUTO_SCHEMA_PATH
+    ) -> str | Path | None:
+        selected = self.schema_path if override == AUTO_SCHEMA_PATH else override
+        if selected in {None, False}:
+            return None
+        if selected == AUTO_SCHEMA_PATH or selected is True:
+            catalog = self.catalog
+            if catalog is not None and catalog.base_schema_path:
+                return catalog.base_schema_path
+            warnings.warn(
+                "Cypher could not include an XML schema header because discovery "
+                "did not report a base Cyclus Relax NG schema path. Run "
+                "'cypher discover' in the target Cyclus environment or pass "
+                "schema_path explicitly.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return None
+        return selected
 
     def run(
         self,

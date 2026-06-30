@@ -93,6 +93,29 @@ class CyclusAdapter:
         )
         return metadata, warnings
 
+    def base_schema_path(self) -> tuple[str | None, tuple[str, ...]]:
+        """Return Cyclus's reported base Relax NG schema path when available."""
+
+        result = self._run(["--rng-schema"])
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "no output"
+            return (
+                None,
+                (
+                    "Cyclus did not report a base Relax NG schema path with "
+                    f"--rng-schema (exit {result.returncode}): {detail}",
+                ),
+            )
+        path = result.stdout.strip()
+        if not path:
+            return (
+                None,
+                ("Cyclus reported an empty base Relax NG schema path.",),
+            )
+        return path, tuple(
+            line.strip() for line in result.stderr.splitlines() if line.strip()
+        )
+
 
 def discover(
     *,
@@ -104,13 +127,15 @@ def discover(
 
     adapter = CyclusAdapter(executable)
     metadata, process_warnings = adapter.metadata()
+    base_schema_path, schema_warnings = adapter.base_schema_path()
     stat = adapter.executable.stat()
     catalog = Catalog.from_metadata(
         metadata,
         executable=str(adapter.executable),
         cyclus_version=adapter.version(),
         executable_mtime_ns=stat.st_mtime_ns,
-        discovery_warnings=process_warnings,
+        base_schema_path=base_schema_path,
+        discovery_warnings=process_warnings + schema_warnings,
     )
     compatibility_warnings = [
         f"{archetype.spec}: {warning}"
@@ -173,6 +198,7 @@ def compatibility_report(catalog: Catalog) -> str:
     lines = [
         f"Cyclus executable: {catalog.executable or 'unknown'}",
         f"Cyclus version: {catalog.cyclus_version or 'unknown'}",
+        f"Base schema path: {catalog.base_schema_path or 'unknown'}",
         f"Libraries: {', '.join(catalog.libraries) or 'none'}",
         f"Archetypes: {len(catalog.archetypes)}",
     ]

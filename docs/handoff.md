@@ -1,7 +1,7 @@
 # Project Handoff
 
-Last updated: 2026-06-22
-Current planning branch: `milestone-three`
+Last updated: 2026-06-29
+Current planning branch: `milestone-four`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -9,9 +9,9 @@ product direction remains in `docs/design.md`.
 
 ## Current state
 
-Milestones one and two are merged into `main`. Milestone three is implemented
-on `milestone-three`, published to Docker Hub as an alpha, and successfully
-tested on a second Linux computer.
+Milestones one, two, and three are merged into `main`. Milestone three was
+published to Docker Hub as an alpha and successfully tested on a second Linux
+computer. Milestone four is beginning on `milestone-four`.
 
 Implemented capabilities:
 
@@ -130,13 +130,30 @@ discovery cache are already installed. Full instructions are in
   multi-architecture and native Apple Silicon support are out of scope.
 - The public API remains pre-alpha and should be refined from hands-on use.
 
-## Suggested next session
+## Current milestone-four work
 
-1. Merge the reviewed `milestone-three` branch.
-2. Gather usability feedback from additional Cyclus users.
-3. Define the next milestone only after prioritizing that feedback; likely
-   candidates include distribution polish, broader examples, and generated
-   editor-interface refinement.
+Milestone four implementation has started:
+
+- `Control` now uses table-driven scalar field metadata.
+- The base scalar control fields from `cyclus.rng.in` serialize in grammar
+  order when explicitly supplied.
+- Invalid scalar control assignments such as bad months, unsupported decay
+  modes, string booleans, and nonpositive seeds fail before XML export.
+- `Simulation` defaults to automatic schema-header generation using the
+  discovered base schema path when available.
+- `Simulation.to_xml()` and `Simulation.export_to_xml()` accept `schema_path`
+  overrides and emit an `xml-model` Relax NG processing instruction.
+- Users can pass `schema_path=None` to omit the header.
+- XML export computes a relative schema `href` from the output path when
+  practical.
+- Discovery calls `cyclus --rng-schema`, caches the reported base schema path
+  when available, and reports it through compatibility output. Missing support
+  remains nonfatal.
+
+Suggested next checks are to run the full fixture-backed suite in an
+environment with dev dependencies installed, then optionally run a live
+container/Cyclus smoke to confirm the generated header and expanded control
+block are accepted by Cyclus.
 
 ## Feedback collection
 

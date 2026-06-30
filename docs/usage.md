@@ -90,6 +90,63 @@ simulation = cypher.Simulation()
 simulation.add(cypher.Control(duration=10, start_year=2000, start_month=1))
 ```
 
+Cypher also supports scalar optional control fields from the base Cyclus
+grammar:
+
+```python
+control = cypher.Control(
+    duration=10,
+    start_year=2000,
+    start_month=1,
+    simhandle="bakery-study",
+    decay="lazy",
+    dt=86400,
+    explicit_inventory=True,
+    tolerance_resource=1e-6,
+    seed=20240101,
+    stride=1234,
+)
+```
+
+Optional control values are omitted from XML unless explicitly supplied.
+Cypher validates clear scalar constraints, such as months, boolean flags,
+positive seeds, and the supported decay modes, before writing XML.
+
+## Export with a Relax NG schema header
+
+By default, Cypher includes an XML `xml-model` processing instruction when the
+discovery cache reports the selected environment's base `cyclus.rng` path:
+
+```xml
+<?xml-model href="/path/to/cyclus.rng.in" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+```
+
+The discovered path is environment-local, so XML generated in a container may
+refer to a container path. To omit the header, opt out on the simulation:
+
+```python
+simulation = cypher.Simulation(
+    cypher.Control(duration=10, start_year=2000, start_month=1),
+    schema_path=None,
+)
+```
+
+When a specific `cyclus.rng` path should be used instead of the discovered
+path, pass it explicitly:
+
+```python
+simulation.export_to_xml("inputs/bakery.xml", schema_path="schemas/cyclus.rng")
+```
+
+The same option is available for direct serialization:
+
+```python
+xml_text = simulation.to_xml(schema_path="schemas/cyclus.rng")
+```
+
+When `export_to_xml()` receives an absolute schema path, Cypher writes a
+relative `href` where the output path makes that possible.
+
 The complete runnable authoring example is in
 [`examples/bakery.py`](../examples/bakery.py).
 
