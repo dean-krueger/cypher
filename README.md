@@ -19,9 +19,12 @@ remaining faithful to Cyclus's own model and terminology.
 - Python import: `cypher`
 - Source repository: `dean-krueger/cypher`
 
-The distribution and import names intentionally differ:
+The distribution and import names intentionally differ. Ordinary package
+installation under the `cyclus-cypher` distribution name is planned, but the
+recommended evaluation path today is the container described below.
 
 ```console
+# planned package name; not the recommended milestone-five install path yet
 python -m pip install cyclus-cypher
 ```
 
@@ -29,13 +32,15 @@ python -m pip install cyclus-cypher
 import cypher
 ```
 
-See [Using Cypher](docs/usage.md) and the complete
-[`examples/bakery.py`](examples/bakery.py) authoring example.
+See the [user guide](docs/user-guide.md), [examples guide](docs/examples.md),
+and complete [`examples/bakery.py`](examples/bakery.py) authoring example.
+Technical reviewers may also want the [code tour](docs/code-tour.md).
 
 Current roadmap documents:
 [milestone two execution](docs/milestone-2.md),
 [milestone three container](docs/milestone-3.md), and
-[milestone four grammar compatibility](docs/milestone-4.md).
+[milestone four grammar compatibility](docs/milestone-4.md), and
+[milestone five documentation](docs/milestone-5.md).
 See [Cypher Container](docs/container.md) for the local image workflow.
 
 ## Development
@@ -77,7 +82,7 @@ The build runs discovery, verifies the registered kernel including a simple
 Matplotlib plot, and runs the bakery example through Cyclus.
 
 The current upstream image is Linux `amd64`; multi-architecture support is not
-part of this milestone. The alpha is available with:
+part of this milestone. The current alpha is available with:
 
 ```console
 docker pull deankrueger/cypher:alpha

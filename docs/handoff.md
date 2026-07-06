@@ -1,7 +1,7 @@
 # Project Handoff
 
 Last updated: 2026-07-06
-Current planning branch: `milestone-four`
+Current planning branch: `milestone-five`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -9,10 +9,10 @@ product direction remains in `docs/design.md`.
 
 ## Current state
 
-Milestones one, two, and three are merged into `main`. Milestone three was
-published to Docker Hub as an alpha and successfully tested on a second Linux
-computer. Milestone four is implemented and locally validated on
-`milestone-four`.
+Milestones one, two, three, and four are ready from the prior branches.
+Milestone three was published to Docker Hub as an alpha and successfully tested
+on a second Linux computer. Milestone four is implemented, locally validated,
+and folded into the current milestone-five documentation push.
 
 Implemented capabilities:
 
@@ -39,6 +39,12 @@ Implemented capabilities:
 - Cyclus verbosity levels and guarded advanced CLI arguments.
 - Structured `RunResult`, `RunError`, and preflight `RunConfigurationError`.
 - A complete runnable bakery example in `examples/bakery.py`.
+- Milestone-five user documentation in `docs/user-guide.md`.
+- Scenario documentation in `docs/examples.md`.
+- A technical reviewer code tour in `docs/code-tour.md`.
+- An OpenMC comparison note in `docs/openmc-comparison.md`.
+- Larger non-authoritative authoring examples in `examples/once_through.py`
+  and `examples/eg23_transition.py`, based on older XML files.
 - A notebook-ready Linux `amd64` image based on the official Cymetric image.
 - Preinstalled IPython and a registered `Python (Cypher)` Jupyter kernel.
 - A scientific notebook stack containing NumPy, pandas, Matplotlib, SciPy, and
@@ -176,10 +182,16 @@ Milestone four implementation is complete locally:
 - The image verifier now launches the registered kernel and executes a simple
   `plt.plot(...)` smoke test.
 
-Suggested next work is milestone-five API refinement: compare Cypher's
-authoring style against canonical OpenMC examples, especially assignment-time
-validation, object/reference ergonomics, editor autocomplete, and notebook
-introspection.
+## Milestone-five documentation work
+
+Milestone five now focuses on documentation rather than API redesign. The
+OpenMC comparison suggested small polish opportunities, but no large changes
+were needed before writing the guide and reviewer material.
+
+The current documentation set emphasizes that the container is the recommended
+evaluation path. Ordinary `pip` installation under the `cyclus-cypher` package
+name, and possible Conda support, are planned follow-on work rather than
+completed milestone-five capabilities.
 
 ## Feedback collection
 

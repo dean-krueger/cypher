@@ -62,7 +62,10 @@ Milestone four does not include XML import, flat-schema export, full solver mode
 
 ## Follow-On Work
 
-Milestone five should compare Cypher authoring style against canonical OpenMC examples, including assignment-time validation and editor autocomplete behavior. Milestone six should then write the deeper user guide and reviewer code tour after the milestone-four and milestone-five APIs settle.
+The OpenMC comparison completed during milestone-five planning did not reveal
+a need for large API redesign. Milestone five therefore shifted toward the more
+pressing user-facing work: a user guide, larger examples, an OpenMC comparison
+note, and a reviewer-oriented code tour.
 
 ## Implementation Notes
 

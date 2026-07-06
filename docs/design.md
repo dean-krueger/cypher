@@ -383,7 +383,9 @@ See `docs/milestone-3.md` for the completed container milestone.
 3. Milestone three: a published alpha of the notebook-ready ecosystem container.
 4. Milestone four: generated full-schema headers and broader scalar control
    support.
-5. Later: OpenMC-style API refinement, distribution maturity, parameter
+5. Milestone five: user guide, larger examples, reviewer code tour, and OpenMC
+   comparison note.
+6. Later: small OpenMC-inspired polish, distribution maturity, parameter
    studies, reproducible discovery, and broader schema support as real usage
    demands them.
 
