@@ -8,10 +8,10 @@ technical conclusions, or cited as the basis for real fuel-cycle analysis.
 
 from __future__ import annotations
 
-import cypher
 import cypher.agents as agents
 import cypher.cycamore as cycamore
 
+import cypher
 
 NOTICE = (
     "This example demonstrates how one might build a more complicated "
