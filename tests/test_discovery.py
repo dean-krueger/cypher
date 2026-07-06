@@ -60,6 +60,58 @@ def test_invocation_error_contains_loader_output(monkeypatch, tmp_path: Path) ->
         adapter.metadata()
 
 
+def test_base_schema_path_uses_cyclus_rng_schema(monkeypatch, tmp_path: Path) -> None:
+    executable = _executable(tmp_path / "cyclus")
+
+    def fake_run(command, **_kwargs):
+        assert command == [str(executable.resolve()), "--rng-schema"]
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="/opt/cyclus/share/cyclus/cyclus.rng.in\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr("cypher.discovery.subprocess.run", fake_run)
+    adapter = CyclusAdapter(executable)
+
+    path, warnings = adapter.base_schema_path()
+
+    assert path == "/opt/cyclus/share/cyclus/cyclus.rng.in"
+    assert warnings == ()
+
+
+def test_full_schema_path_uses_cyclus_new_file(monkeypatch, tmp_path: Path) -> None:
+    executable = _executable(tmp_path / "cyclus")
+
+    def fake_run(command, **kwargs):
+        assert command == [str(executable.resolve()), "-n", "simulation.xml"]
+        cwd = Path(kwargs["cwd"])
+        (cwd / "simulation.xml").write_text(
+            '<?xml-model href="cyclus_grammar_fixture.rng" application="text/xml"?>\n'
+            "<simulation />\n",
+            encoding="utf-8",
+        )
+        (cwd / "cyclus_grammar_fixture.rng").write_text(
+            "<grammar />\n", encoding="utf-8"
+        )
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="",
+            stderr="Experimental Warning: fixture\n",
+        )
+
+    monkeypatch.setattr("cypher.discovery.subprocess.run", fake_run)
+    adapter = CyclusAdapter(executable)
+
+    path, warnings = adapter.full_schema_path(tmp_path / "cache" / "schemas")
+
+    assert path == str(tmp_path / "cache" / "schemas" / "cyclus-full-schema.rng")
+    assert Path(path).read_text(encoding="utf-8") == "<grammar />\n"
+    assert warnings == ("Experimental Warning: fixture",)
+
+
 def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
     paths = write_stubs(catalog, tmp_path)
 
@@ -76,4 +128,6 @@ def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
 def test_compatibility_report_identifies_environment(catalog) -> None:
     report = compatibility_report(catalog)
     assert "/opt/cyclus/bin/cyclus" in report
+    assert "/opt/cyclus/share/cyclus/cyclus.rng.in" in report
+    assert "/opt/cypher/cache/schemas/cyclus-full-schema.rng" in report
     assert "agents, cycamore" in report

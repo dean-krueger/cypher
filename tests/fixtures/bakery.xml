@@ -1,8 +1,9 @@
+<?xml-model href="/opt/cypher/cache/schemas/cyclus-full-schema.rng" application="text/xml"?>
 <simulation>
   <control>
     <duration>10</duration>
-    <startmonth>1</startmonth>
     <startyear>2000</startyear>
+    <startmonth>1</startmonth>
   </control>
   <archetypes>
     <spec>

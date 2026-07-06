@@ -13,7 +13,12 @@ from .archetype import Prototype
 from .core import Commodity, Recipe, Simulation
 
 
-def simulation_xml(simulation: Simulation) -> str:
+def simulation_xml(
+    simulation: Simulation,
+    *,
+    schema_path: str | Path | None = None,
+    output_path: str | Path | None = None,
+) -> str:
     """Serialize a validated simulation as readable hierarchical XML."""
 
     graph = simulation.graph()
@@ -30,14 +35,22 @@ def simulation_xml(simulation: Simulation) -> str:
     for region in graph.regions:
         _region(root, region)
     ET.indent(root, space="  ")
-    return ET.tostring(root, encoding="unicode", short_empty_elements=True) + "\n"
+    content = ET.tostring(root, encoding="unicode", short_empty_elements=True) + "\n"
+    if schema_path is not None:
+        content = _schema_processing_instruction(schema_path, output_path) + content
+    return content
 
 
-def export_xml(simulation: Simulation, path: Path) -> Path:
+def export_xml(
+    simulation: Simulation,
+    path: Path,
+    *,
+    schema_path: str | Path | None = None,
+) -> Path:
     """Atomically write validated simulation XML."""
 
-    content = simulation.to_xml()
     target = path.expanduser()
+    content = simulation.to_xml(schema_path=schema_path, output_path=target)
     target.parent.mkdir(parents=True, exist_ok=True)
     permissions = None
     if os.name == "posix":
@@ -63,9 +76,8 @@ def export_xml(simulation: Simulation, path: Path) -> Path:
 def _control(root: ET.Element, simulation: Simulation) -> None:
     assert simulation.control is not None
     element = ET.SubElement(root, "control")
-    _text(element, "duration", simulation.control.duration)
-    _text(element, "startmonth", simulation.control.start_month)
-    _text(element, "startyear", simulation.control.start_year)
+    for field, value in simulation.control.explicit_items():
+        _text(element, field.xml_name, value)
 
 
 def _commodity(root: ET.Element, commodity: Commodity) -> None:
@@ -159,3 +171,36 @@ def _value_text(value: Any) -> str:
     if isinstance(value, (Commodity, Recipe)):
         return value.name
     return str(value)
+
+
+def _schema_processing_instruction(
+    schema_path: str | Path,
+    output_path: str | Path | None,
+) -> str:
+    href = _schema_href(schema_path, output_path)
+    return f'<?xml-model href="{_xml_attribute(href)}" application="text/xml"?>\n'
+
+
+def _schema_href(schema_path: str | Path, output_path: str | Path | None) -> str:
+    schema = Path(schema_path).expanduser()
+    if not schema.is_absolute():
+        return schema.as_posix()
+    if output_path is None:
+        return schema.as_posix()
+    output = Path(output_path).expanduser()
+    if not output.is_absolute():
+        output = output.resolve()
+    try:
+        relative = os.path.relpath(schema, start=output.parent)
+    except ValueError:
+        return schema.as_posix()
+    return Path(relative).as_posix()
+
+
+def _xml_attribute(value: str) -> str:
+    return (
+        value.replace("&", "&amp;")
+        .replace('"', "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )

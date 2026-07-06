@@ -26,7 +26,10 @@ def verify_kernel() -> None:
     try:
         client.wait_for_ready(timeout=20)
         message_id = client.execute(
-            "import cypher, graphviz, matplotlib, numpy, pandas, scipy, seaborn"
+            "import cypher, graphviz, matplotlib, numpy, pandas, scipy, seaborn\n"
+            "import matplotlib.pyplot as plt\n"
+            "plt.plot([1, 2, 3, 4, 5], [1, 2, 3, 4, 5])\n"
+            "plt.close('all')"
         )
         while True:
             reply = client.get_shell_msg(timeout=20)
@@ -53,6 +56,8 @@ def main() -> int:
         raise RuntimeError("The Graphviz 'dot' executable is not available on PATH.")
 
     catalog = Catalog.load()
+    if not catalog.full_schema_path:
+        raise RuntimeError("Discovery cache is missing the generated full schema path.")
     required_libraries = {"agents", "cycamore"}
     missing = required_libraries.difference(catalog.libraries)
     if missing:

@@ -27,7 +27,7 @@ def test_catalog_round_trip(tmp_path: Path, catalog: Catalog) -> None:
     loaded = Catalog.load(path)
 
     assert loaded.to_dict() == catalog.to_dict()
-    assert json.loads(path.read_text())["format_version"] == 1
+    assert json.loads(path.read_text())["format_version"] == 2
 
 
 def test_unknown_library_lists_available_libraries(catalog: Catalog) -> None:

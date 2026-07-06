@@ -1,7 +1,7 @@
 # Milestone 3: Notebook-Ready Container
 
 Status: implemented, published as an alpha, and validated on a second machine
-Last updated: 2026-06-22
+Last updated: 2026-07-06
 
 ## Goal
 
@@ -56,6 +56,7 @@ The image build should:
   notebooks;
 - run `cypher discover`;
 - register a clearly named notebook kernel;
+- verify a simple Matplotlib plot through that registered kernel;
 - run the bakery smoke test through Cyclus;
 - retain a normal shell-oriented entry point suitable for `sleep infinity`.
 
@@ -120,4 +121,3 @@ The first container milestone does not require:
 - replacing native pip or Conda installation paths.
 
 PyNE and classroom-oriented JupyterLab hosting remain valuable later goals.
-

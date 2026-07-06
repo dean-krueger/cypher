@@ -35,8 +35,10 @@ docker build \
 ```
 
 Building the image runs `cypher discover`, launches the registered notebook
-kernel, and runs the bakery simulation through Cyclus. A successful build
-therefore verifies more than package installation.
+kernel, verifies a simple Matplotlib plot, confirms the generated full Cyclus
+schema is present in the discovery cache, and runs the bakery simulation
+through Cyclus. A successful build therefore verifies more than package
+installation.
 
 ## Start a development container
 
@@ -92,7 +94,8 @@ docker run --rm cypher:local \
 
 It checks the UTF-8 locale, Cyclus executable, Cypher discovery cache,
 archetype-library imports, Cymetric and notebook dependencies, kernel
-registration, and a real kernel launch.
+registration, a real kernel launch, a simple Matplotlib plot, and cached full
+schema discovery output.
 
 ## Additional archetype libraries
 
