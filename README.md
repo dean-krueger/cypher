@@ -33,8 +33,9 @@ See [Using Cypher](docs/usage.md) and the complete
 [`examples/bakery.py`](examples/bakery.py) authoring example.
 
 Current roadmap documents:
-[milestone two execution](docs/milestone-2.md) and
-[milestone three container](docs/milestone-3.md).
+[milestone two execution](docs/milestone-2.md),
+[milestone three container](docs/milestone-3.md), and
+[milestone four grammar compatibility](docs/milestone-4.md).
 See [Cypher Container](docs/container.md) for the local image workflow.
 
 ## Development
@@ -71,6 +72,9 @@ Its scientific notebook stack includes NumPy, pandas, Matplotlib, SciPy, and
 Seaborn, plus Graphviz support for Cymetric flow graphs. It is intended for VS
 Code Dev Containers with a mounted `/workspace` rather than launching
 JupyterLab itself.
+
+The build runs discovery, verifies the registered kernel including a simple
+Matplotlib plot, and runs the bakery example through Cyclus.
 
 The current upstream image is Linux `amd64`; multi-architecture support is not
 part of this milestone. The alpha is available with:

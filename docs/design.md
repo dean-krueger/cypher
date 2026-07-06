@@ -364,8 +364,9 @@ installed into the container's Cyclus environment and `cypher discover` is run.
 Milestone three builds on the official Cymetric image, defaulting to its
 `latest` tag while permitting a pinned tag or digest. The image targets VS Code
 Dev Containers and includes IPython, a selectable kernel, a UTF-8 locale,
-discovery data, scientific Python packages, Graphviz, and a bakery smoke test.
-It does not automatically launch JupyterLab.
+discovery data, scientific Python packages, Graphviz, kernel-level Matplotlib
+plot verification, and a bakery smoke test. It does not automatically launch
+JupyterLab.
 
 User notebooks and results live in mounted host directories. The first Linux
 `amd64` alpha is published as `deankrueger/cypher:alpha` and
@@ -380,8 +381,11 @@ See `docs/milestone-3.md` for the completed container milestone.
 1. Milestone one: metadata-driven authoring and hierarchical XML export.
 2. Milestone two: safe, notebook-friendly Cyclus execution.
 3. Milestone three: a published alpha of the notebook-ready ecosystem container.
-4. Later: distribution maturity, parameter studies, reproducible discovery,
-   and broader schema support as real usage demands them.
+4. Milestone four: generated full-schema headers and broader scalar control
+   support.
+5. Later: OpenMC-style API refinement, distribution maturity, parameter
+   studies, reproducible discovery, and broader schema support as real usage
+   demands them.
 
 ## Decisions intentionally deferred
 
@@ -398,4 +402,3 @@ See `docs/milestone-3.md` for the completed container milestone.
 - PyPI and Conda publication policy
 - Stable public names for every method shown in examples
 - Long-term compatibility and deprecation policy
-

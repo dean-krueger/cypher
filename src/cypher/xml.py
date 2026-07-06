@@ -178,10 +178,7 @@ def _schema_processing_instruction(
     output_path: str | Path | None,
 ) -> str:
     href = _schema_href(schema_path, output_path)
-    return (
-        f'<?xml-model href="{_xml_attribute(href)}" type="application/xml" '
-        'schematypens="http://relaxng.org/ns/structure/1.0"?>\n'
-    )
+    return f'<?xml-model href="{_xml_attribute(href)}" application="text/xml"?>\n'
 
 
 def _schema_href(schema_path: str | Path, output_path: str | Path | None) -> str:

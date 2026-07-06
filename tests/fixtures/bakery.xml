@@ -1,4 +1,4 @@
-<?xml-model href="/opt/cyclus/share/cyclus/cyclus.rng.in" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<?xml-model href="/opt/cypher/cache/schemas/cyclus-full-schema.rng" application="text/xml"?>
 <simulation>
   <control>
     <duration>10</duration>

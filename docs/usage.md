@@ -115,14 +115,16 @@ positive seeds, and the supported decay modes, before writing XML.
 ## Export with a Relax NG schema header
 
 By default, Cypher includes an XML `xml-model` processing instruction when the
-discovery cache reports the selected environment's base `cyclus.rng` path:
+discovery cache reports the selected environment's generated full schema path:
 
 ```xml
-<?xml-model href="/path/to/cyclus.rng.in" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<?xml-model href="/path/to/cyclus-full-schema.rng" application="text/xml"?>
 ```
 
-The discovered path is environment-local, so XML generated in a container may
-refer to a container path. To omit the header, opt out on the simulation:
+Discovery runs `cyclus -n` in a temporary directory and copies the full Relax
+NG schema into Cypher's environment cache. The cached path is
+environment-local, so XML generated in a container may refer to a container
+path. To omit the header, opt out on the simulation:
 
 ```python
 simulation = cypher.Simulation(
@@ -131,8 +133,8 @@ simulation = cypher.Simulation(
 )
 ```
 
-When a specific `cyclus.rng` path should be used instead of the discovered
-path, pass it explicitly:
+When a specific Relax NG schema path should be used instead of the discovered
+cached full schema, pass it explicitly:
 
 ```python
 simulation.export_to_xml("inputs/bakery.xml", schema_path="schemas/cyclus.rng")

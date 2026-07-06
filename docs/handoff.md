@@ -1,6 +1,6 @@
 # Project Handoff
 
-Last updated: 2026-06-29
+Last updated: 2026-07-06
 Current planning branch: `milestone-four`
 
 This document records short-term implementation state so development can resume
@@ -11,7 +11,8 @@ product direction remains in `docs/design.md`.
 
 Milestones one, two, and three are merged into `main`. Milestone three was
 published to Docker Hub as an alpha and successfully tested on a second Linux
-computer. Milestone four is beginning on `milestone-four`.
+computer. Milestone four is implemented and locally validated on
+`milestone-four`.
 
 Implemented capabilities:
 
@@ -45,17 +46,22 @@ Implemented capabilities:
 - Graphviz system and Python support for Cymetric flow graphs.
 - Build-time discovery, component verification, real kernel launch, and bakery
   smoke test.
+- Generated full-schema discovery via `cyclus -n`, with automatic XML headers
+  pointing at the cached full Relax NG schema.
+- Optional scalar Cyclus control fields beyond duration, start year, and start
+  month.
 
 Cypher's workflow intentionally ends at the SQLite output. Cymetric remains
 responsible for database querying and analysis.
 
 ## Verification completed
 
-- Fixture-backed suite after milestone-three implementation: 58 tests passed.
+- Fixture-backed suite after milestone-four implementation: 71 tests passed.
 - One opt-in integration test skipped unless `CYPHER_TEST_CYCLUS` is set.
 - Ruff lint and formatting checks passed.
 - Source distribution and wheel built successfully.
-- Both distributions passed `twine check`.
+- Both distributions passed `twine check` when run with packaging tooling new
+  enough to understand PEP 639 license metadata.
 - The built wheel imported and exposed its CLI from an isolated target
   directory.
 - Live testing used the local image:
@@ -80,17 +86,31 @@ responsible for database querying and analysis.
 - The published alpha was pulled and exercised through VS Code Dev Containers
   on a second Linux computer; imports, notebooks, simulation execution,
   scientific packages, and Cymetric Graphviz support worked.
+- Local image `cypher:milestone-4` built successfully from the official
+  Cymetric image after milestone-four changes.
+- Final local milestone-four image: `cypher:milestone-4`, image ID beginning
+  `sha256:8c88f8d2cce8`, size approximately 4.11 GB.
+- The milestone-four image verifier confirmed the registered kernel can import
+  the scientific stack and execute a simple `matplotlib.pyplot.plot(...)`
+  call.
+- `cypher discover` in the milestone-four image cached a generated full Relax
+  NG schema from `cyclus -n` at
+  `/root/.cache/cypher/schemas/cyclus-full-schema.rng`.
+- The milestone-four bakery smoke test exported XML with an `xml-model` header
+  pointing at the cached full schema and Cyclus accepted the input.
 
 The original GitHub packaging checks failed because modern setuptools rejects
 the legacy BSD license classifier when a PEP 639 license expression is also
-present. The redundant classifier has been removed.
+present. The redundant classifier has been removed. Local `twine check` should
+use a recent `packaging` release; the optional dev dependency now requires
+`packaging>=24.2`.
 
 ## Docker development workflow
 
 Build the repository image:
 
 ```console
-docker build -t cypher:milestone-3 .
+docker build -t cypher:milestone-4 .
 ```
 
 Start the VS Code Dev Containers target with a persistent host workspace:
@@ -100,7 +120,7 @@ docker run -d \
   --name cypher-dev \
   -v "$PWD/my_project:/workspace" \
   -w /workspace \
-  cypher:milestone-3 \
+  cypher:milestone-4 \
   sleep infinity
 ```
 
@@ -130,30 +150,36 @@ discovery cache are already installed. Full instructions are in
   multi-architecture and native Apple Silicon support are out of scope.
 - The public API remains pre-alpha and should be refined from hands-on use.
 
-## Current milestone-four work
+## Completed milestone-four work
 
-Milestone four implementation has started:
+Milestone four implementation is complete locally:
 
 - `Control` now uses table-driven scalar field metadata.
-- The base scalar control fields from `cyclus.rng.in` serialize in grammar
+- The base scalar control fields from the Cyclus grammar serialize in grammar
   order when explicitly supplied.
 - Invalid scalar control assignments such as bad months, unsupported decay
   modes, string booleans, and nonpositive seeds fail before XML export.
 - `Simulation` defaults to automatic schema-header generation using the
-  discovered base schema path when available.
+  discovered full schema path when available.
 - `Simulation.to_xml()` and `Simulation.export_to_xml()` accept `schema_path`
-  overrides and emit an `xml-model` Relax NG processing instruction.
+  overrides and emit the Cyclus-style `xml-model` processing instruction.
 - Users can pass `schema_path=None` to omit the header.
 - XML export computes a relative schema `href` from the output path when
   practical.
-- Discovery calls `cyclus --rng-schema`, caches the reported base schema path
-  when available, and reports it through compatibility output. Missing support
-  remains nonfatal.
+- Discovery calls `cyclus --rng-schema` for base-schema provenance, runs
+  `cyclus -n` in a temporary directory, copies the generated full Relax NG
+  schema into the Cypher cache, and reports both paths through compatibility
+  output. Missing support remains nonfatal.
+- The Dockerfile pins `matplotlib-inline` to the 0.1 series so notebook
+  plotting remains compatible with the Ubuntu Matplotlib 3.6 package in the
+  Cymetric base image.
+- The image verifier now launches the registered kernel and executes a simple
+  `plt.plot(...)` smoke test.
 
-Suggested next checks are to run the full fixture-backed suite in an
-environment with dev dependencies installed, then optionally run a live
-container/Cyclus smoke to confirm the generated header and expanded control
-block are accepted by Cyclus.
+Suggested next work is milestone-five API refinement: compare Cypher's
+authoring style against canonical OpenMC examples, especially assignment-time
+validation, object/reference ergonomics, editor autocomplete, and notebook
+introspection.
 
 ## Feedback collection
 

@@ -434,11 +434,11 @@ class Simulation:
             return None
         if selected == AUTO_SCHEMA_PATH or selected is True:
             catalog = self.catalog
-            if catalog is not None and catalog.base_schema_path:
-                return catalog.base_schema_path
+            if catalog is not None and catalog.full_schema_path:
+                return catalog.full_schema_path
             warnings.warn(
                 "Cypher could not include an XML schema header because discovery "
-                "did not report a base Cyclus Relax NG schema path. Run "
+                "did not report a generated full Cyclus Relax NG schema path. Run "
                 "'cypher discover' in the target Cyclus environment or pass "
                 "schema_path explicitly.",
                 UserWarning,

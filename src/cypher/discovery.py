@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .catalog import Catalog, cache_root, set_catalog
+from .catalog import Catalog, cache_file, cache_root, set_catalog
 from .errors import CyclusInvocationError, DiscoveryError
 
 
@@ -52,13 +54,16 @@ class CyclusAdapter:
     def __init__(self, executable: str | os.PathLike[str] | None = None) -> None:
         self.executable = resolve_cyclus_executable(executable)
 
-    def _run(self, arguments: list[str]) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self, arguments: list[str], *, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         try:
             return subprocess.run(
                 [str(self.executable), *arguments],
                 check=False,
                 capture_output=True,
                 text=True,
+                cwd=cwd,
             )
         except OSError as error:
             raise CyclusInvocationError(
@@ -116,6 +121,53 @@ class CyclusAdapter:
             line.strip() for line in result.stderr.splitlines() if line.strip()
         )
 
+    def full_schema_path(
+        self, destination_dir: Path
+    ) -> tuple[str | None, tuple[str, ...]]:
+        """Generate and cache Cyclus's full environment-specific schema."""
+
+        with tempfile.TemporaryDirectory(prefix="cypher-schema-") as directory:
+            working_dir = Path(directory)
+            skeleton = working_dir / "simulation.xml"
+            result = self._run(["-n", skeleton.name], cwd=working_dir)
+            process_warnings = tuple(
+                line.strip() for line in result.stderr.splitlines() if line.strip()
+            )
+            if result.returncode != 0:
+                detail = result.stderr.strip() or result.stdout.strip() or "no output"
+                return (
+                    None,
+                    (
+                        "Cyclus did not generate a full Relax NG schema with "
+                        f"-n (exit {result.returncode}): {detail}",
+                    ),
+                )
+            try:
+                header = skeleton.read_text(encoding="utf-8").splitlines()[0]
+            except (FileNotFoundError, IndexError, OSError) as error:
+                return (
+                    None,
+                    (f"Cyclus -n did not write a readable schema header: {error}",),
+                )
+            match = re.search(r'href="([^"]+)"', header)
+            if match is None:
+                return (
+                    None,
+                    ("Cyclus -n output did not include an xml-model href.",),
+                )
+            source = (working_dir / match.group(1)).resolve()
+            if not source.is_file():
+                return (
+                    None,
+                    (f"Cyclus -n referenced a schema that was not written: {source}",),
+                )
+            destination_dir.mkdir(parents=True, exist_ok=True)
+            destination = destination_dir / "cyclus-full-schema.rng"
+            temporary = destination.with_suffix(".rng.tmp")
+            shutil.copyfile(source, temporary)
+            os.replace(temporary, destination)
+        return str(destination), process_warnings
+
 
 def discover(
     *,
@@ -128,6 +180,10 @@ def discover(
     adapter = CyclusAdapter(executable)
     metadata, process_warnings = adapter.metadata()
     base_schema_path, schema_warnings = adapter.base_schema_path()
+    target_cache = cache_path or cache_file()
+    full_schema_path, full_schema_warnings = adapter.full_schema_path(
+        target_cache.parent / "schemas"
+    )
     stat = adapter.executable.stat()
     catalog = Catalog.from_metadata(
         metadata,
@@ -135,7 +191,8 @@ def discover(
         cyclus_version=adapter.version(),
         executable_mtime_ns=stat.st_mtime_ns,
         base_schema_path=base_schema_path,
-        discovery_warnings=process_warnings + schema_warnings,
+        full_schema_path=full_schema_path,
+        discovery_warnings=process_warnings + schema_warnings + full_schema_warnings,
     )
     compatibility_warnings = [
         f"{archetype.spec}: {warning}"
@@ -147,7 +204,7 @@ def discover(
             "Strict discovery rejected unsupported metadata:\n- "
             + "\n- ".join(compatibility_warnings)
         )
-    saved = catalog.save(cache_path)
+    saved = catalog.save(target_cache)
     stubs = write_stubs(catalog)
     set_catalog(catalog)
     return DiscoveryResult(catalog=catalog, cache_path=saved, stub_paths=stubs)
@@ -199,6 +256,7 @@ def compatibility_report(catalog: Catalog) -> str:
         f"Cyclus executable: {catalog.executable or 'unknown'}",
         f"Cyclus version: {catalog.cyclus_version or 'unknown'}",
         f"Base schema path: {catalog.base_schema_path or 'unknown'}",
+        f"Generated full schema path: {catalog.full_schema_path or 'unknown'}",
         f"Libraries: {', '.join(catalog.libraries) or 'none'}",
         f"Archetypes: {len(catalog.archetypes)}",
     ]

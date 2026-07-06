@@ -29,8 +29,9 @@ RUN python3 -m pip install \
         --break-system-packages \
         --no-cache-dir \
         . \
-        "ipython>=8,<10" \
-        "ipykernel>=6,<8" \
+        "ipython>=8,<9" \
+        "ipykernel>=6,<7" \
+        "matplotlib-inline>=0.1,<0.2" \
         "seaborn==0.13.2" \
         "graphviz>=0.20,<1" \
     && python3 -m ipykernel install \

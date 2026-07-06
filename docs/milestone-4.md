@@ -1,7 +1,7 @@
 # Milestone 4: Cyclus Grammar and Control Compatibility
 
-Status: implemented on milestone-four
-Last updated: 2026-06-29
+Status: implemented, locally validated, and ready for PR
+Last updated: 2026-07-06
 
 ## Goal
 
@@ -15,7 +15,7 @@ The current authoring workflow works, but Cypher omits XML grammar metadata and 
 
 - Support the XML processing instruction form used by existing inputs.
 - Keep generated XML deterministic and readable.
-- Include the header automatically when discovery reports a schema path.
+- Include the header automatically when discovery reports a generated full schema path.
 - Warn and omit the header when automatic schema selection is requested but no
   schema path is known.
 - Let users opt out of the header when portability is more important.
@@ -66,14 +66,21 @@ Milestone five should compare Cypher authoring style against canonical OpenMC ex
 
 ## Implementation Notes
 
-Cyclus exposes the base Relax NG schema path through `cyclus --rng-schema`.
-Cypher discovery now calls that hook, caches the reported path as provenance,
-and includes it in compatibility reports. Failure to report the path remains
-nonfatal so unusual or older Cyclus installations can still discover
+Cyclus exposes the base Relax NG schema path through `cyclus --rng-schema`, but
+that base schema is not the complete grammar for an installed environment.
+Cypher discovery runs `cyclus -n` in a temporary directory, copies the
+generated full Relax NG schema into Cypher's discovery cache, and includes that
+cached path in compatibility reports. Failure to generate the full schema
+remains nonfatal so unusual or older Cyclus installations can still discover
 archetypes.
 
-Generated XML includes the schema header by default when discovery reported a
-base schema path. Users can pass `schema_path=None` to `Simulation` or an
-individual export call to omit the header, or pass an explicit path to override
-the discovered value. Export computes a relative `href` from the output file
-location when practical.
+Generated XML includes the schema header by default when discovery reports a
+generated full schema path. Users can pass `schema_path=None` to `Simulation`
+or an individual export call to omit the header, or pass an explicit path to
+override the discovered value. Export computes a relative `href` from the
+output file location when practical.
+
+Local validation for the final milestone-four branch included the full
+fixture-backed suite, Ruff, package build and `twine check`, a rebuilt
+`cypher:milestone-4` image, kernel-level Matplotlib plotting, discovery of the
+generated full schema, and the bakery Cyclus smoke test.

@@ -101,8 +101,7 @@ def test_to_xml_can_include_explicit_schema_header(catalog) -> None:
     xml = simulation.to_xml(schema_path="schemas/cyclus.rng")
 
     assert xml.startswith(
-        '<?xml-model href="schemas/cyclus.rng" type="application/xml" '
-        'schematypens="http://relaxng.org/ns/structure/1.0"?>\n'
+        '<?xml-model href="schemas/cyclus.rng" application="text/xml"?>\n'
         "<simulation>"
     )
 
@@ -114,9 +113,8 @@ def test_simulation_uses_discovered_schema_header_by_default(catalog) -> None:
     )
 
     assert simulation.to_xml().startswith(
-        '<?xml-model href="/opt/cyclus/share/cyclus/cyclus.rng.in" '
-        'type="application/xml" '
-        'schematypens="http://relaxng.org/ns/structure/1.0"?>\n'
+        '<?xml-model href="/opt/cypher/cache/schemas/cyclus-full-schema.rng" '
+        'application="text/xml"?>\n'
     )
 
 
@@ -157,6 +155,5 @@ def test_export_uses_portable_relative_schema_href(catalog, tmp_path: Path) -> N
     simulation.export_to_xml(output, schema_path=schema)
 
     assert output.read_text(encoding="utf-8").startswith(
-        '<?xml-model href="../schemas/cyclus.rng" type="application/xml" '
-        'schematypens="http://relaxng.org/ns/structure/1.0"?>\n'
+        '<?xml-model href="../schemas/cyclus.rng" application="text/xml"?>\n'
     )
