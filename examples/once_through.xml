@@ -1,0 +1,277 @@
+<simulation>
+    <control>
+    <!-- 80 years is long enough -->
+        <duration>1080</duration> 
+        <startmonth>1</startmonth>
+        <startyear>2000</startyear>
+    </control>
+
+    <archetypes>
+        <spec><lib>cycamore</lib><name>Source</name></spec>
+        <spec><lib>cycamore</lib><name>Conversion</name></spec>
+        <spec><lib>cycamore</lib><name>Enrichment</name></spec>
+        <spec><lib>cycamore</lib><name>Mixer</name></spec>
+        <spec><lib>cycamore</lib><name>Reactor</name></spec>
+        <spec><lib>cycamore</lib><name>Storage</name></spec>
+        <spec><lib>cycamore</lib><name>Sink</name></spec>
+        <spec><lib>cycamore</lib><name>DeployInst</name></spec>
+        <spec><lib>agents</lib><name>NullInst</name></spec>
+        <spec><lib>agents</lib><name>NullRegion</name></spec>
+    </archetypes>
+
+    <!-- This simulation requires recipes for natural uranium, enriched uranium,
+    fresh UOX fuel, and spent UOX fuel -->
+
+     <!-- NOTE: Verify these recipes against Ko and Gao's 2010 paper-->
+    <recipe>
+        <name>natl_u</name>
+        <basis>mass</basis>
+        <nuclide>
+            <id>922350000</id>
+            <comp>0.0071</comp>
+        </nuclide>
+        <nuclide>
+            <id>922380000</id>
+            <comp>0.9929</comp>
+        </nuclide>
+    </recipe>
+
+    <recipe>
+        <name>enriched_u</name>
+        <basis>mass</basis>
+        <nuclide>
+            <id>922350000</id>
+            <comp>0.045</comp>
+        </nuclide>
+        <nuclide>
+            <id>922380000</id>
+            <comp>0.955</comp>
+        </nuclide>
+    </recipe>
+
+    <!-- NOTE: I got this spent_uox vector from 
+    https://github.com/cyclus/cycamore/blob/main/input/recycle.xml -->
+    <recipe>
+    <name>spent_uox</name>
+    <basis>mass</basis>
+    <nuclide> <id>U235</id>  <comp>156.729</comp> </nuclide>
+    <nuclide> <id>U236</id>  <comp>102.103</comp> </nuclide>
+    <nuclide> <id>U238</id>  <comp>18280.324</comp> </nuclide>
+    <nuclide> <id>Np237</id> <comp>13.656</comp> </nuclide>
+    <nuclide> <id>Pu238</id> <comp>5.043</comp> </nuclide>
+    <nuclide> <id>Pu239</id> <comp>106.343</comp> </nuclide>
+    <nuclide> <id>Pu240</id> <comp>41.357</comp> </nuclide>
+    <nuclide> <id>Pu241</id> <comp>36.477</comp> </nuclide>
+    <nuclide> <id>Pu242</id> <comp>15.387</comp> </nuclide>
+    <nuclide> <id>Am241</id> <comp>1.234</comp> </nuclide>
+    <nuclide> <id>Am243</id> <comp>3.607</comp> </nuclide>
+    <nuclide> <id>Cm244</id> <comp>0.431</comp> </nuclide>
+    <nuclide> <id>Cm245</id> <comp>1.263</comp> </nuclide>
+  </recipe> 
+
+    <!-- Facilities: Source, Conversion, Enrichment, Sink -->
+    <facility>
+        <name>UraniumMine</name>
+        <config>
+            <Source>
+                <outcommod>natl_u</outcommod>
+                <outrecipe>natl_u</outrecipe>
+                <throughput>100000000</throughput>
+            </Source>
+        </config>
+    </facility>
+
+    <facility>
+        <name>Conversion</name>
+        <config>
+            <Conversion>
+                <incommods>
+                    <val>natl_u</val>
+                </incommods>
+                <outcommod>UF6</outcommod>
+                <throughput>1000000</throughput>
+            </Conversion>
+        </config>
+    </facility>
+
+    <!-- TODO: Verify the assay against Ko and Gao's 2010 Paper -->
+    <facility>
+        <name>Enrichment</name>
+        <config>
+            <Enrichment>
+                <feed_commod>UF6</feed_commod>
+                <feed_recipe>natl_u</feed_recipe>
+                <product_commod>EnrichedU</product_commod>
+                <tails_commod>tails</tails_commod>
+                <tails_assay>0.002</tails_assay>
+                <swu_capacity>1000000</swu_capacity>
+            </Enrichment>
+        </config>
+    </facility>
+
+
+    <!-- TODO: This may need a check? -->
+    <facility>
+        <name>Mixer</name>
+        <config>
+            <Mixer>
+                <in_streams>
+                    <stream>
+                        <info>
+                            <mixing_ratio>1.0</mixing_ratio>
+                            <buf_size>10000000</buf_size>
+                        </info>
+                        <commodities>
+                            <item>
+                                <commodity>EnrichedU</commodity>
+                                <pref>1</pref>
+                            </item>
+                        </commodities>
+                    </stream>
+                </in_streams>
+                <in_stream_recipes>
+                    <val>enriched_u</val>
+                </in_stream_recipes>
+                <out_recipe>fresh_uox</out_recipe>
+                <out_commod>LEU_Fuel</out_commod>
+                <throughput>10000000</throughput>
+            </Mixer>
+        </config>
+    </facility>
+
+  <facility>
+    <name>Reactor</name>
+    <config>
+      <Reactor>
+        <fuel_inrecipes>  
+            <val>fresh_uox</val>
+        </fuel_inrecipes>
+        <fuel_outrecipes> 
+            <val>spent_uox</val> 
+        </fuel_outrecipes>
+        <fuel_incommods> 
+            <val>LEU_Fuel</val>
+        </fuel_incommods>
+        <fuel_outcommods> 
+            <val>HotSNF</val> 
+        </fuel_outcommods>
+        <fuel_prefs>     
+            <val>1.0</val>
+        </fuel_prefs>
+
+        <cycle_time>17</cycle_time> <!-- NOTE: Zhou 2014 uses 500 FPD cycle time -->
+        <refuel_time>2</refuel_time> <!-- NOTE: Zhou 2014 uses a Capacity Factor of 0.9 -->
+        <assem_size>19500</assem_size> <!-- NOTE: Zhou 2014 uses 19.5 tHM -->
+        <n_assem_core>3</n_assem_core>
+        <n_assem_batch>1</n_assem_batch>
+        <power_cap>1000.0</power_cap> <!-- NOTE: Zhou 2014 uses 1000 MWe Reactor Power -->
+      </Reactor>
+    </config>
+  </facility>
+
+    <facility>
+        <name>SpentFuelStorage</name>
+        <config>
+        <Storage>
+            <in_commods>
+                <val>HotSNF</val>
+            </in_commods>
+            <out_commods>
+                <val>CooledSNF</val>
+            </out_commods>
+            <residence_time>60</residence_time> <!-- 5 years -->
+            <throughput>100000000</throughput> <!-- Some non-constraining value -->
+            <max_inv_size>1000000000</max_inv_size> <!-- Some non-constraining value -->
+        </Storage>
+        </config>
+    </facility>
+
+    <facility>
+    <name>InterimStorage</name>
+    <config>
+      <Storage>
+        <in_commods>
+          <val>CooledSNF</val>
+        </in_commods>
+        <out_commods>
+          <val>DecayedSNF</val>
+        </out_commods>
+        <residence_time>360</residence_time> <!-- 30 years -->
+        <throughput>100000000</throughput> <!-- Some non-constraining value -->
+        <max_inv_size>1000000000</max_inv_size> <!-- Some non-constraining value -->
+      </Storage>
+    </config>
+    </facility>
+
+    <facility>
+        <name>Repository</name>
+        <config>
+            <Sink>
+                <in_commods>
+                    <val>DecayedSNF</val>
+                </in_commods>
+                <max_inv_size>100000000</max_inv_size>
+            </Sink>
+        </config>
+    </facility>
+
+    <region>
+    <name>TestRegion</name>
+    <config> <NullRegion /> </config>
+    <institution>
+      <name>TestInst</name>
+      <initialfacilitylist>
+        <entry>
+          <prototype>UraniumMine</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>Conversion</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>Enrichment</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>Mixer</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>SpentFuelStorage</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>InterimStorage</prototype>
+          <number>1</number>
+        </entry>
+        <entry>
+          <prototype>Repository</prototype>
+          <number>1</number>
+        </entry>
+      </initialfacilitylist>
+      <config> 
+         <NullInst /> 
+      </config>
+    </institution>
+    <institution>
+      <name>ReactorInst</name>
+      <config>
+        <DeployInst>
+          <prototypes>
+            <val>Reactor</val>
+          </prototypes>
+          <build_times>
+            <val>1</val> <!-- Start in the simulation -->
+          </build_times>
+          <n_build>
+            <val>1</val>
+          </n_build>
+          <lifetimes>
+            <val>476</val> <!-- 40 years -->
+          </lifetimes>
+        </DeployInst>
+      </config>
+    </institution>
+  </region>
+</simulation>
