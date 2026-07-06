@@ -4,10 +4,13 @@ Cypher is pre-alpha. It discovers installed Cyclus archetypes, builds a
 simulation from Python objects, exports readable hierarchical XML, and runs
 that input through Cyclus.
 
+This file is a compact usage reference. The fuller walkthrough is
+[`docs/user-guide.md`](user-guide.md), and the larger scenario notes are in
+[`docs/examples.md`](examples.md).
+
 ## Discover the Cyclus environment
 
-Install Cypher in the same native, Conda, or container environment as Cyclus,
-then run:
+Use the Cypher container, then run:
 
 ```console
 cypher discover
@@ -216,6 +219,8 @@ result = simulation.run(extra_args=["--warn-limit", "100"])
 On a nonzero Cyclus exit, `run()` raises `cypher.RunError`; its `.result`
 contains the command, return code, paths, stdout, and stderr for diagnosis.
 
-Run Cypher inside the same native, Conda, or container environment used for
-discovery so validation and execution observe the same libraries. Cypher's
+Run Cypher inside the same container environment used for discovery so
+validation and execution observe the same libraries. Cypher's ordinary `pip`
+and possible Conda installation paths are planned near-term work, but they are
+not the recommended milestone-five evaluation path yet. Cypher's
 workflow ends at the SQLite output; use Cymetric for querying and analysis.
