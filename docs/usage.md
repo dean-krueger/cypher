@@ -115,6 +115,34 @@ Optional control values are omitted from XML unless explicitly supplied.
 Cypher validates clear scalar constraints, such as months, boolean flags,
 positive seeds, and the supported decay modes, before writing XML.
 
+### Nested archetype fields
+
+Standard nested C++ fields composed from scalars, vectors, lists, sets, pairs,
+and maps are supported recursively. Begin with the complete generated help for
+an archetype:
+
+```python
+help(cycamore.Source)
+help(cycamore.Separations)
+```
+
+This displays its constructor signature, required and optional fields,
+defaults, field documentation, compatibility warnings, and examples for nested
+fields. For a focused view of one complicated field, use:
+
+```python
+cycamore.Separations.describe_field("streams")
+cycamore.Separations.field_example("streams")
+example = cycamore.Separations.field_example_value("streams")
+```
+
+Vectors and lists accept Python lists or tuples, sets accept sets or sequences,
+pairs require two-item tuples, and maps accept mappings or sequences of
+two-item tuples. These forms can be nested to any depth described by the
+discovered Cyclus metadata. See the
+[user guide](user-guide.md#nested-container-fields) for a worked Separations
+configuration.
+
 ## Export with a Relax NG schema header
 
 By default, Cypher includes an XML `xml-model` processing instruction when the

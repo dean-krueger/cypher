@@ -44,7 +44,9 @@ The package lives under `src/cypher/`.
 
 Tests live in `tests/`. Most tests use fixture-backed metadata and should not
 require Docker, network access, or a live Cyclus install. The optional
-integration test is gated behind `CYPHER_TEST_CYCLUS`.
+integration tests are gated behind `CYPHER_TEST_CYCLUS`. When that variable is
+set, a missing executable or discovery failure is a test failure rather than a
+skip.
 
 ## Public Import Surface
 
@@ -174,8 +176,9 @@ instead of depending on a live simulator.
 - `uitype`: semantic hints such as recipe, commodity, or prototype;
 - `value_range`: numeric bounds when annotations provide a usable range.
 
-`FieldSpec.python_type` maps C++/schema-ish types onto simple Python runtime
-checks: `int`, `float`, `bool`, `str`, `list`, or `object`.
+`FieldSpec.python_type` preserves a coarse outer type for compatibility.
+`FieldSpec.value_shape` contains the complete recursive structure and produces
+the richer runtime annotation and generated-stub expression used for authoring.
 
 `ArchetypeSpec` describes one archetype:
 
@@ -378,8 +381,10 @@ explicit XML output.
 `__setattr__` recursively validates scalar and container values, including
 precise paths to invalid nested leaves. It also accepts `Commodity` objects for
 fields marked as commodity-like and `Recipe` objects for fields marked as
-recipe-like. Full input and simulation-semantic validation still belongs to
-Cyclus.
+recipe-like. `Simulation.validate()` repeats field validation over the current
+explicit values, catching invalid in-place mutations that happened after
+assignment. Cyclus remains authoritative for schema and simulator semantics
+that cannot be inferred from normalized metadata.
 
 Generated classes expose `field_example(name)`, `field_example_value(name)`,
 and `describe_field(name)` for IPython discovery. The formatted example maps
@@ -483,7 +488,8 @@ tracking `id(item)`.
 The graph walker follows:
 
 - explicit field values on prototypes;
-- `Commodity` and `Recipe` objects inside values and lists;
+- `Commodity` and `Recipe` objects recursively nested inside mappings and
+  sequences;
 - region children;
 - institution initial-facility references when they are objects.
 
@@ -508,9 +514,11 @@ Validation includes:
 - control field problems;
 - recipe and commodity problems;
 - missing required archetype fields;
+- invalid current archetype values, including values mutated after assignment;
 - duplicate names within facilities, regions, institutions, and recipes;
 - institution string references to unknown facility prototypes;
-- string recipe references to unknown recipes for recipe-like fields;
+- string recipe references to unknown recipes at any depth in fields marked
+  `recipe`, `inrecipe`, or `outrecipe`;
 - explicitly requested libraries unavailable in the catalog;
 - archetypes from libraries that were used without being added, when the user
   declared an explicit library set.
@@ -564,7 +572,7 @@ output.
 
 `_field()` walks the recursive `ValueShape` and XML alias trees together.
 Vectors become repeated elements, pairs become ordered sibling structures, and
-maps accept mappings or sequences of key/value pairs. This handles structures
+maps accept mappings or sequences of key/value tuples. This handles structures
 such as Mixer streams, Separations streams, and arbitrary deeper combinations
 without archetype-specific serializer code. `_value_text()` converts booleans
 to Cyclus-style `true`/`false` and converts `Commodity` or `Recipe` objects to

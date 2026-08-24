@@ -230,6 +230,15 @@ Cyclus remains authoritative for complete input validity and simulation
 semantics. Cypher should not duplicate complicated business rules already owned
 by Cyclus.
 
+### Recursive archetype field shapes
+
+Standard C++ archetype fields composed from supported scalar, vector, list,
+set, pair, and map types are modeled recursively from discovered metadata.
+That single recursive shape drives generated Python annotations and stubs,
+notebook examples, validation, reference discovery, and XML serialization.
+There is no fixed nesting-depth limit; unsupported custom types or incompatible
+type/alias trees remain explicit compatibility findings.
+
 ### Defaults
 
 An archetype field may have a default reported by Cyclus. Cypher should expose
@@ -385,7 +394,9 @@ See `docs/milestone-3.md` for the completed container milestone.
    support.
 5. Milestone five: user guide, larger examples, reviewer code tour, and OpenMC
    comparison note.
-6. Later: small OpenMC-inspired polish, distribution maturity, parameter
+6. Completed follow-on: faithful recursive standard C++ archetype field
+   handling, notebook-oriented field examples, and live nested Mixer coverage.
+7. Later: small OpenMC-inspired polish, distribution maturity, parameter
    studies, reproducible discovery, and broader schema support as real usage
    demands them.
 

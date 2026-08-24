@@ -65,8 +65,10 @@ responsible for database querying and analysis.
 
 ## Verification completed
 
-- Fixture-backed suite after milestone-four implementation: 71 tests passed.
-- One opt-in integration test skipped unless `CYPHER_TEST_CYCLUS` is set.
+- Current fixture-backed suite: 86 tests passed.
+- Two opt-in integration tests are skipped unless `CYPHER_TEST_CYCLUS` is set;
+  once configured, an invalid executable or metadata-discovery failure fails
+  the suite.
 - Ruff lint and formatting checks passed.
 - Source distribution and wheel built successfully.
 - Both distributions passed `twine check` when run with packaging tooling new
@@ -167,7 +169,7 @@ Separations, validates the XML alias tree during discovery, generates recursive
 runtime and stub annotations, validates nested Python values with precise error
 paths, and serializes the type and alias trees together.
 
-Maps accept either mappings or sequences of two-item pairs. Generated classes
+Maps accept either mappings or sequences of two-item tuples. Generated classes
 provide alias-aware `field_example(name)`, raw `field_example_value(name)`, and
 `describe_field(name)` so notebook users can inspect complicated fields without
 reading C++ source. The compact Python-shaped template labels positions with
@@ -182,7 +184,7 @@ output in Jupyter notebooks.
 Fixture coverage includes Mixer, Separations, and a stress type equivalent to
 `map<string, map<string, pair<double, string>>>`. Live container validation
 discovered the installed Cycamore metadata and successfully ran a one-timestep
-simulation containing both Mixer and Separations through Cyclus 1.6.0.
+simulation containing a recursively nested Mixer through Cyclus 1.6.0.
 
 ## Completed milestone-four work
 

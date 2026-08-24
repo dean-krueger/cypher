@@ -36,6 +36,20 @@ See the [user guide](docs/user-guide.md), [examples guide](docs/examples.md),
 and complete [`examples/bakery.py`](examples/bakery.py) authoring example.
 Technical reviewers may also want the [code tour](docs/code-tour.md).
 
+## Nested Archetype Fields
+
+Cypher recursively supports standard nested C++ archetype types built from
+scalars, `std::vector`, `std::list`, `std::set`, `std::pair`, and `std::map`.
+Generated signatures and stubs describe the accepted Python shape, while
+Python's `help(cycamore.Source)`, `describe_field()`, `field_example()`, and
+`field_example_value()` make discovered fields inspectable in IPython.
+Validation and XML serialization use the same recursive model, including
+deeply nested structures such as
+`map<string, map<string, pair<double, string>>>`.
+
+See [Nested container fields](docs/user-guide.md#nested-container-fields) for
+the accepted Python forms and a complete Cycamore Separations example.
+
 Current roadmap documents:
 [milestone two execution](docs/milestone-2.md),
 [milestone three container](docs/milestone-3.md), and
