@@ -285,6 +285,37 @@ def test_run_command_streams_and_captures(capsys, tmp_path: Path) -> None:
     assert captured.err == "warning\n"
 
 
+def test_streaming_writes_readable_chunks(monkeypatch, tmp_path: Path) -> None:
+    class RecordingStream:
+        def __init__(self) -> None:
+            self.writes = []
+
+        def write(self, value: str) -> int:
+            self.writes.append(value)
+            return len(value)
+
+        def flush(self) -> None:
+            pass
+
+    stdout = RecordingStream()
+    stderr = RecordingStream()
+    monkeypatch.setattr("cypher.execution.sys.stdout", stdout)
+    monkeypatch.setattr("cypher.execution.sys.stderr", stderr)
+    command = (
+        sys.executable,
+        "-c",
+        "import sys; sys.stdout.write('o' * 500 + '\\n'); "
+        "sys.stderr.write('e' * 500 + '\\n')",
+    )
+
+    completed = run_command(command, cwd=tmp_path, stream_output=True)
+
+    assert "".join(stdout.writes) == completed.stdout
+    assert "".join(stderr.writes) == completed.stderr
+    assert len(stdout.writes) < 20
+    assert len(stderr.writes) < 20
+
+
 def test_explicit_executable_mismatch_warns(
     monkeypatch, tmp_path: Path, catalog
 ) -> None:

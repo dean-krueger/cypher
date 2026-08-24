@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .catalog import Catalog, cache_file, cache_root, set_catalog
 from .errors import CyclusInvocationError, DiscoveryError
+from .shapes import ValueShape
 
 
 @dataclass(frozen=True)
@@ -218,6 +219,7 @@ def write_stubs(catalog: Catalog, root: Path | None = None) -> tuple[Path, ...]:
     paths = []
     for library in catalog.libraries:
         lines = [
+            "from collections.abc import Mapping, Sequence",
             "from typing import Any",
             "from cypher.archetype import Prototype",
             "",
@@ -278,18 +280,7 @@ def compatibility_report(catalog: Catalog) -> str:
 
 
 def _stub_type(cpp_type: str | list[object]) -> str:
-    if isinstance(cpp_type, list):
-        inner = _stub_type(cpp_type[1]) if len(cpp_type) > 1 else "Any"
-        return f"list[{inner}]"
-    return {
-        "bool": "bool",
-        "double": "float",
-        "float": "float",
-        "int": "int",
-        "long": "int",
-        "std::string": "str",
-        "string": "str",
-    }.get(cpp_type, "Any")
+    return ValueShape.from_cpp_type(cpp_type).type_expression()
 
 
 def _one_line(value: str) -> str:

@@ -116,6 +116,54 @@ When Cyclus expects only a name, Cypher serializes the object to its name in
 the exported XML. Strings still work for some references, but object references
 let Cypher collect related objects and catch more mistakes before Cyclus runs.
 
+### Nested container fields
+
+Some archetypes expose configuration fields built from nested C++ containers.
+Cypher translates supported combinations of `std::vector`, `std::list`,
+`std::set`, `std::pair`, and `std::map` recursively into ordinary Python
+collections. For example, the discovered Cycamore `Separations.streams` field
+can be configured as:
+
+```python
+separations = cycamore.Separations(
+    "Separations",
+    feed_commods=["used_fuel"],
+    feedbuf_size=1000.0,
+    streams={
+        "recovered_fuel": (
+            1000.0,
+            {922350000: 0.95, 942390000: 0.90},
+        ),
+    },
+)
+```
+
+The generated signature and docstring show the Python shape discovered for the
+active Cyclus environment. Field-level helpers are convenient in IPython:
+
+```python
+cycamore.Separations.describe_field("streams")
+cycamore.Separations.field_example("streams")
+```
+
+`field_example()` returns a compact Python-shaped template labeled with XML
+aliases, followed by an example value.
+`field_example_value()` returns just the ordinary Python example value when that
+is more convenient for programmatic inspection.
+
+Maps accept either a Python mapping or a sequence of two-item pairs. The latter
+form permits object references or complex keys that are not hashable:
+
+```python
+streams=[
+    (recovered_commodity, (1000.0, {922350000: 0.95})),
+]
+```
+
+Validation follows the complete nested shape and reports the path to an invalid
+leaf. Serialization walks the same shape together with Cyclus's XML aliases, so
+nesting depth is not limited to a fixed number of container layers.
+
 ## Validate And Export XML
 
 Run validation explicitly when you want fast feedback:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -305,6 +306,10 @@ class Simulation:
                 append_identity(commodities, value)
             elif isinstance(value, Recipe):
                 append_identity(recipes, value)
+            elif isinstance(value, Mapping):
+                for key, child in value.items():
+                    visit_value(key)
+                    visit_value(child)
             elif isinstance(value, (list, tuple)):
                 for child in value:
                     visit_value(child)

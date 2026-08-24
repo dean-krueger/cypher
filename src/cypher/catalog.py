@@ -10,6 +10,7 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from .errors import DiscoveryError
+from .shapes import ValueShape, alias_problem
 
 RNG_NAMESPACE = "http://relaxng.org/ns/structure/1.0"
 RNG = f"{{{RNG_NAMESPACE}}}"
@@ -31,18 +32,24 @@ class FieldSpec:
 
     @property
     def python_type(self) -> type[Any]:
-        type_name = self.cpp_type
-        if isinstance(type_name, list):
-            return list if type_name and type_name[0] == "std::vector" else object
-        if type_name in {"int", "long", "long int", "unsigned int"}:
-            return int
-        if type_name in {"double", "float"}:
-            return float
-        if type_name == "bool":
-            return bool
-        if type_name in {"std::string", "string"}:
-            return str
-        return object
+        """Return the coarse outer Python runtime type for compatibility."""
+
+        shape = self.value_shape
+        containers = {
+            "vector": list,
+            "list": list,
+            "set": set,
+            "pair": tuple,
+            "map": dict,
+        }
+        if shape.kind in containers:
+            return containers[shape.kind]
+        annotation = shape.annotation()
+        return annotation if isinstance(annotation, type) else object
+
+    @property
+    def value_shape(self) -> ValueShape:
+        return ValueShape.from_cpp_type(self.cpp_type)
 
 
 @dataclass(frozen=True)
@@ -325,6 +332,14 @@ def _normalize_fields(
     fields: list[FieldSpec] = []
     for name, (element, required) in elements.items():
         raw = variables.get(name)
+        if isinstance(raw, str):
+            target = raw
+            raw = variables.get(target)
+            if not isinstance(raw, dict):
+                warnings.append(
+                    f"schema input field {name!r} refers to missing annotation "
+                    f"variable {target!r}"
+                )
         if not isinstance(raw, dict):
             warnings.append(
                 f"schema input field {name!r} has no corresponding annotation"
@@ -355,6 +370,13 @@ def _normalize_fields(
                 value_range=normalized_range,
             )
         )
+        value_shape = ValueShape.from_cpp_type(cpp_type)
+        if not value_shape.supported:
+            warnings.append(
+                f"field {name!r} uses unsupported C++ input type {cpp_type!r}"
+            )
+        elif problem := alias_problem(value_shape, alias):
+            warnings.append(f"field {name!r} has incompatible XML alias: {problem}")
 
     supported = {
         "grammar",

@@ -7,9 +7,10 @@ import subprocess
 import sys
 import threading
 import warnings
+from codecs import getincrementaldecoder
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, TextIO
+from typing import TYPE_CHECKING, BinaryIO, TextIO
 
 from .discovery import resolve_cyclus_executable
 from .errors import DiscoveryError, RunConfigurationError, RunError
@@ -211,16 +212,16 @@ def run_command(
             cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
+            bufsize=0,
         )
     except OSError as error:
         raise RunConfigurationError(
             f"Could not launch Cyclus command {command[0]!r}: {error}"
         ) from error
 
-    stdout_parts: list[str] = []
-    stderr_parts: list[str] = []
+    stdout_parts: list[bytes] = []
+    stderr_parts: list[bytes] = []
+    display_lock = threading.Lock()
     threads = [
         threading.Thread(
             target=_drain_stream,
@@ -228,6 +229,7 @@ def run_command(
                 process.stdout,
                 stdout_parts,
                 sys.stdout if stream_output else None,
+                display_lock,
             ),
             daemon=True,
         ),
@@ -237,6 +239,7 @@ def run_command(
                 process.stderr,
                 stderr_parts,
                 sys.stderr if stream_output else None,
+                display_lock,
             ),
             daemon=True,
         ),
@@ -249,8 +252,8 @@ def run_command(
     return subprocess.CompletedProcess(
         args=command,
         returncode=returncode,
-        stdout="".join(stdout_parts),
-        stderr="".join(stderr_parts),
+        stdout=b"".join(stdout_parts).decode("utf-8", errors="replace"),
+        stderr=b"".join(stderr_parts).decode("utf-8", errors="replace"),
     )
 
 
@@ -335,20 +338,31 @@ def _resolve_execution_executable(
 
 
 def _drain_stream(
-    stream: TextIO | None,
-    capture: list[str],
+    stream: BinaryIO | None,
+    capture: list[bytes],
     destination: TextIO | None,
+    display_lock: threading.Lock,
 ) -> None:
     if stream is None:
         return
+    decoder = getincrementaldecoder("utf-8")(errors="replace")
     try:
         while True:
-            chunk = stream.read(1)
-            if chunk == "":
+            chunk = os.read(stream.fileno(), 4096)
+            if not chunk:
                 break
             capture.append(chunk)
             if destination is not None:
-                destination.write(chunk)
-                destination.flush()
+                text = decoder.decode(chunk)
+                if text:
+                    with display_lock:
+                        destination.write(text)
+                        destination.flush()
+        if destination is not None:
+            remainder = decoder.decode(b"", final=True)
+            if remainder:
+                with display_lock:
+                    destination.write(remainder)
+                    destination.flush()
     finally:
         stream.close()

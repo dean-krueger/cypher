@@ -11,6 +11,7 @@ from xml.etree import ElementTree as ET
 
 from .archetype import Prototype
 from .core import Commodity, Recipe, Simulation
+from .shapes import ValueShape, is_sequence, map_items, sequence_items
 
 
 def simulation_xml(
@@ -112,7 +113,7 @@ def _prototype(parent: ET.Element, prototype: Prototype, tag: str) -> ET.Element
     config = ET.SubElement(element, "config")
     archetype = ET.SubElement(config, prototype._archetype.name)
     for field, value in prototype.explicit_items():
-        _field(archetype, field.alias, value)
+        _field(archetype, field.alias, value, field.value_shape)
     return element
 
 
@@ -138,25 +139,83 @@ def _institution(parent: ET.Element, institution: Prototype) -> None:
     config = ET.SubElement(element, "config")
     archetype = ET.SubElement(config, institution._archetype.name)
     for field, value in institution.explicit_items():
-        _field(archetype, field.alias, value)
+        _field(archetype, field.alias, value, field.value_shape)
 
 
-def _field(parent: ET.Element, alias: str | list[Any], value: Any) -> None:
-    if isinstance(alias, list):
-        if not alias:
-            raise ValueError("Cannot serialize an empty field alias.")
-        if len(alias) == 1:
-            element = ET.SubElement(parent, str(alias[0]))
-            element.text = _value_text(value)
-            return
-        outer = ET.SubElement(parent, str(alias[0]))
-        values = value if isinstance(value, (list, tuple)) else [value]
-        child_alias = alias[1] if len(alias) == 2 else alias[1:]
-        for item in values:
-            _field(outer, child_alias, item)
+def _field(
+    parent: ET.Element, alias: str | list[Any], value: Any, shape: ValueShape
+) -> None:
+    """Serialize a value by walking its C++ type and XML alias trees together."""
+
+    if shape.kind in {"int", "float", "bool", "string"}:
+        if not isinstance(alias, str):
+            raise ValueError(
+                f"Scalar C++ type {shape.cpp_type} requires a string XML alias; "
+                f"got {alias!r}."
+            )
+        _text(parent, alias, value)
         return
-    element = ET.SubElement(parent, alias)
-    element.text = _value_text(value)
+    if shape.kind in {"vector", "list", "set"}:
+        parts = _alias_parts(alias, 2, shape)
+        wrapper = ET.SubElement(parent, _alias_name(parts[0], shape))
+        items = sequence_items(value, allow_set=shape.kind == "set")
+        assert items is not None
+        for item in items:
+            _field(wrapper, parts[1], item, shape.children[0])
+        return
+    if shape.kind == "pair":
+        parts = _alias_parts(alias, 3, shape)
+        wrapper = ET.SubElement(parent, _alias_name(parts[0], shape))
+        assert is_sequence(value) and len(value) == 2
+        _field(wrapper, parts[1], value[0], shape.children[0])
+        _field(wrapper, parts[2], value[1], shape.children[1])
+        return
+    if shape.kind == "map":
+        parts = _alias_parts(alias, 3, shape)
+        entries = map_items(value)
+        assert entries is not None
+        wrapper, entry_name = _map_alias(parent, parts[0], shape)
+        for key, item in entries:
+            entry = ET.SubElement(wrapper, entry_name)
+            _field(entry, parts[1], key, shape.children[0])
+            _field(entry, parts[2], item, shape.children[1])
+        return
+    raise ValueError(f"Cannot serialize unsupported C++ type {shape.cpp_type}.")
+
+
+def _alias_parts(alias: Any, count: int, shape: ValueShape) -> list[Any]:
+    if not isinstance(alias, list) or len(alias) != count:
+        raise ValueError(
+            f"C++ type {shape.cpp_type} requires a {count}-part XML alias; "
+            f"got {alias!r}."
+        )
+    return alias
+
+
+def _alias_name(alias: Any, shape: ValueShape) -> str:
+    if not isinstance(alias, str):
+        raise ValueError(
+            f"C++ type {shape.cpp_type} requires a string wrapper alias; "
+            f"got {alias!r}."
+        )
+    return alias
+
+
+def _map_alias(
+    parent: ET.Element, alias: Any, shape: ValueShape
+) -> tuple[ET.Element, str]:
+    if isinstance(alias, str):
+        return parent, alias
+    if (
+        not isinstance(alias, list)
+        or len(alias) != 2
+        or not all(isinstance(item, str) for item in alias)
+    ):
+        raise ValueError(
+            f"C++ map type {shape.cpp_type} requires a map alias such as "
+            f"['wrapper', 'item']; got {alias!r}."
+        )
+    return ET.SubElement(parent, alias[0]), alias[1]
 
 
 def _text(parent: ET.Element, name: str, value: Any) -> ET.Element:
