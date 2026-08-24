@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 from .archetype import Prototype
 from .core import Commodity, Recipe, Simulation
-from .shapes import ValueShape, is_sequence, map_items, sequence_items
+from .shapes import ValueShape, map_items, sequence_items
 
 
 def simulation_xml(
@@ -166,7 +166,7 @@ def _field(
     if shape.kind == "pair":
         parts = _alias_parts(alias, 3, shape)
         wrapper = ET.SubElement(parent, _alias_name(parts[0], shape))
-        assert is_sequence(value) and len(value) == 2
+        assert isinstance(value, tuple) and len(value) == 2
         _field(wrapper, parts[1], value[0], shape.children[0])
         _field(wrapper, parts[2], value[1], shape.children[1])
         return

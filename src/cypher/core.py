@@ -547,7 +547,7 @@ def _nested_recipe_names(
             yield from _nested_recipe_names(shape.children[0], item, child_ui[0])
         return
     if shape.kind == "pair":
-        if not isinstance(value, (list, tuple)) or len(value) != 2:
+        if not isinstance(value, tuple) or len(value) != 2:
             return
         for child, item, ui in zip(shape.children, value, child_ui, strict=True):
             yield from _nested_recipe_names(child, item, ui)
