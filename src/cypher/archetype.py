@@ -165,6 +165,11 @@ class Prototype:
         for field in self.fields:
             if field.required and not self.is_set(field.name):
                 problems.append(f"{label} is missing required field {field.name!r}")
+        for field, value in self.explicit_items():
+            try:
+                _validate_field_value(self, field, value)
+            except (TypeError, ValueError) as error:
+                problems.append(str(error))
         # Compatibility warnings are reported by discovery and strict mode.
         return problems
 

@@ -314,6 +314,22 @@ def test_nested_validation_reports_the_precise_value_path(nested_catalog) -> Non
         )
 
 
+def test_mutated_nested_values_are_revalidated_before_export(nested_catalog) -> None:
+    module = importlib.import_module("cypher.test")
+    records = {"outer": {"inner": (3.14, "description")}}
+    stress = module.Stress("Stress", records=records)
+    simulation = _simulation(nested_catalog, stress)
+    records["outer"]["inner"] = ("not-a-double", "description")
+
+    expected_path = (
+        r"Stress\(name='Stress'\)\.records\['outer'\]\['inner'\]\[0\]"
+    )
+    with pytest.raises(ValidationError, match=expected_path):
+        simulation.validate()
+    with pytest.raises(ValidationError, match=expected_path):
+        simulation.to_xml()
+
+
 def test_container_annotations_match_accepted_inputs(nested_catalog) -> None:
     module = importlib.import_module("cypher.test")
     signature = inspect.signature(module.Stress)
