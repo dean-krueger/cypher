@@ -88,7 +88,12 @@ def build_simulation() -> cypher.Simulation:
     )
     mixer = cycamore.Mixer(
         "Mixer",
-        in_streams=[{"commod": enriched_u, "pref": 1.0}],
+        in_streams=[
+            (
+                (1.0, 1e299),
+                [(enriched_u, 1.0)],
+            )
+        ],
         out_commod=fresh_uox,
         throughput=1e299,
     )

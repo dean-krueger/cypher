@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from .archetype import Prototype
 from .catalog import Catalog, get_catalog
 from .errors import DiscoveryError, ValidationError
+from .shapes import ValueShape, map_items, sequence_items, split_uitype
 
 if TYPE_CHECKING:
     from .execution import RunResult
@@ -305,6 +307,10 @@ class Simulation:
                 append_identity(commodities, value)
             elif isinstance(value, Recipe):
                 append_identity(recipes, value)
+            elif isinstance(value, Mapping):
+                for key, child in value.items():
+                    visit_value(key)
+                    visit_value(child)
             elif isinstance(value, (list, tuple)):
                 for child in value:
                     visit_value(child)
@@ -511,12 +517,46 @@ def _reference_problems(graph: Graph) -> list[str]:
                 )
     for facility in graph.facilities:
         for field, value in facility.explicit_items():
-            uitypes = field.uitype if isinstance(field.uitype, list) else [field.uitype]
-            if "recipe" in uitypes and isinstance(value, str):
-                if value and value not in recipe_names:
+            for referenced_name in _nested_recipe_names(
+                field.value_shape, value, field.uitype
+            ):
+                if referenced_name and referenced_name not in recipe_names:
                     problems.append(
                         f"{facility.library}:{facility._archetype.name} "
                         f"{facility.name!r} field {field.name!r} references unknown "
-                        f"recipe {value!r}"
+                        f"recipe {referenced_name!r}"
                     )
     return problems
+
+
+def _nested_recipe_names(
+    shape: ValueShape, value: Any, uitype: Any
+) -> Iterator[str]:
+    """Return recipe-name strings identified by a recursive UI-type tree."""
+
+    semantic, child_ui = split_uitype(uitype, len(shape.children))
+    if shape.kind == "string":
+        semantics = uitype if isinstance(uitype, list) else [semantic]
+        if any(item in {"recipe", "inrecipe", "outrecipe"} for item in semantics):
+            if isinstance(value, str):
+                yield value
+        return
+    if shape.kind in {"vector", "list", "set"}:
+        items = sequence_items(value, allow_set=shape.kind == "set") or []
+        for item in items:
+            yield from _nested_recipe_names(shape.children[0], item, child_ui[0])
+        return
+    if shape.kind == "pair":
+        if not isinstance(value, tuple) or len(value) != 2:
+            return
+        for child, item, ui in zip(shape.children, value, child_ui, strict=True):
+            yield from _nested_recipe_names(child, item, ui)
+        return
+    if shape.kind == "map":
+        entries = map_items(value) or []
+        for key, item in entries:
+            for child, child_value, ui in (
+                (shape.children[0], key, child_ui[0]),
+                (shape.children[1], item, child_ui[1]),
+            ):
+                yield from _nested_recipe_names(child, child_value, ui)

@@ -53,10 +53,10 @@ The scenario shape is:
 
 The script is meant to make the mapping from a familiar hierarchical Cyclus XML
 input to Cypher objects easy to inspect. Some details have been simplified or
-kept as direct translations from the old XML. In particular, complex Cycamore
-fields such as mixer stream declarations are still limited by the metadata that
-Cypher can discover today, so review the generated XML before using the pattern
-in new work.
+kept as direct translations from the old XML. The mixer configuration
+demonstrates Cypher's recursive support for nested vector, pair, and map fields.
+Review the generated XML and the scenario's modeling assumptions before using
+the pattern in new work.
 
 ## EG Transition Scenario
 
@@ -86,9 +86,9 @@ The EG script is intentionally an authoring example, not a benchmark
 definition or integration test. It shows how a larger Cyclus scenario can be
 organized in Python while preserving the main XML concepts: recipes,
 prototypes, initial facilities, deployment schedules, regions, and
-institutions. Complex separations and mixer stream structures should be treated
-as sketches until the source scenario and the discovered archetype metadata are
-reviewed together.
+institutions. Cypher can serialize the nested Separations and Mixer container
+structures, but the translated scenario and its numerical assumptions remain
+non-authoritative and should be independently reviewed before technical use.
 
 ## Comparing XML And Cypher
 

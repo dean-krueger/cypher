@@ -109,15 +109,22 @@ def build_simulation() -> cypher.Simulation:
         feed_commods=[used_lwr_fuel],
         feed_commod_prefs=[1.0],
         feedbuf_size=1e299,
-        streams=[{"commod": separated_uox, "info": "recovered actinides"}],
+        streams=[
+            (
+                separated_uox,
+                (1e299, {922350000: 0.99, 942390000: 0.99}),
+            )
+        ],
         leftover_commod=waste,
         throughput=1e299,
     )
     sfr_mixer = cycamore.Mixer(
         "SFR_Mixer",
         in_streams=[
-            {"commod": separated_uox, "pref": 1.0},
-            {"commod": separated_sfr, "pref": 1.0},
+            (
+                (1.0, 1e299),
+                [(separated_uox, 1.0), (separated_sfr, 1.0)],
+            )
         ],
         out_commod=fresh_sfr_fuel,
         throughput=1e299,
@@ -147,7 +154,12 @@ def build_simulation() -> cypher.Simulation:
         feed_commods=[used_sfr_fuel],
         feed_commod_prefs=[1.0],
         feedbuf_size=1e299,
-        streams=[{"commod": separated_sfr, "info": "recovered sfr material"}],
+        streams=[
+            (
+                separated_sfr,
+                (1e299, {922350000: 0.99, 942390000: 0.99}),
+            )
+        ],
         leftover_commod=waste,
         throughput=1e299,
     )

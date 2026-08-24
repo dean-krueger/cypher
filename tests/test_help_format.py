@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import inspect
 
+import pytest
+
 from cypher.archetype import make_archetype_class
 from cypher.catalog import ArchetypeSpec, FieldSpec
 
@@ -57,3 +59,30 @@ def test_help_orders_required_fields_before_optional_fields() -> None:
     assert generated.__doc__.index("Required fields:") < generated.__doc__.index(
         "Optional fields:"
     )
+
+
+def test_incompatible_alias_warning_does_not_break_class_generation() -> None:
+    archetype = ArchetypeSpec(
+        spec=":example:Warned",
+        path="",
+        library="example",
+        name="Warned",
+        entity="facility",
+        doc="An archetype with a warned field.",
+        fields=(
+            FieldSpec(
+                name="values",
+                alias="values",
+                cpp_type=["std::vector", "double"],
+                required=True,
+            ),
+        ),
+        schema="<interleave/>",
+        warnings=("field 'values' has an incompatible XML alias",),
+    )
+
+    generated = make_archetype_class(archetype, module_name="cypher.example")
+
+    assert "Example unavailable" in generated.__doc__
+    with pytest.raises(TypeError, match="incompatible XML alias"):
+        generated.field_example("values")

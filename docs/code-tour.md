@@ -35,6 +35,7 @@ The package lives under `src/cypher/`.
 - `cli.py` exposes `cypher discover` and `cypher compatibility`.
 - `discovery.py` is the subprocess boundary for talking to Cyclus.
 - `catalog.py` defines normalized metadata objects and cache handling.
+- `shapes.py` models and validates recursive C++ container value shapes.
 - `archetype.py` builds runtime classes for discovered archetypes.
 - `core.py` defines handwritten simulation objects and graph validation.
 - `xml.py` serializes validated simulations to hierarchical Cyclus XML.
@@ -255,11 +256,16 @@ Other schema constructs are reported as compatibility warnings. This is a
 major reason strict mode exists: the project can be transparent about partial
 support without blocking basic workflows by default.
 
-Current limitation: complex nested structures such as some Cycamore `Mixer`
-and `Separations` streams are discovered only shallowly. They can be assigned
-as list-like Python values, but XML serialization does not yet reconstruct the
-full nested schema shape. The milestone-five advanced examples call this out
-as authoring examples rather than validated Cyclus run inputs.
+Annotation variables can refer to another variable name, as Cycamore does for
+the public Mixer `in_streams` and Separations `streams` fields. Normalization
+resolves that indirection before building the `FieldSpec`; otherwise the real
+container type and XML alias tree would be lost.
+
+`shapes.py` parses supported scalar types and recursive combinations of
+`std::vector`, `std::list`, `std::set`, `std::pair`, and `std::map` into a
+`ValueShape` tree. Discovery checks the accompanying XML alias tree against
+that shape and reports a compatibility warning rather than guessing when the
+two cannot be reconciled.
 
 ## Compatibility Reports
 
@@ -369,10 +375,18 @@ available fields. Unknown assignment after construction fails in
 `None`. This lets users inspect defaults without those defaults becoming
 explicit XML output.
 
-`__setattr__` validates simple Python types and value ranges. It also accepts
-`Commodity` objects for fields marked as commodity-like and `Recipe` objects
-for fields marked as recipe-like. The runtime validation is intentionally
-coarse; full schema validation still belongs to Cyclus.
+`__setattr__` recursively validates scalar and container values, including
+precise paths to invalid nested leaves. It also accepts `Commodity` objects for
+fields marked as commodity-like and `Recipe` objects for fields marked as
+recipe-like. Full input and simulation-semantic validation still belongs to
+Cyclus.
+
+Generated classes expose `field_example(name)`, `field_example_value(name)`,
+and `describe_field(name)` for IPython discovery. The formatted example maps
+container positions to XML aliases in a compact Python-shaped template. All
+three use the same `ValueShape` that drives signatures, stubs, validation, and
+serialization, preventing examples from drifting away from the implemented
+input contract.
 
 `explicit_items()` yields field specs and values in discovered field order, but
 only for explicitly assigned fields. This is the mechanism that prevents Cypher
@@ -548,10 +562,13 @@ Serialization order is deterministic:
 The serializer uses `xml.etree.ElementTree` and `ET.indent()` for readable
 output.
 
-`_field()` handles scalar fields, repeated alias paths such as
-`["prototypes", "val"]`, and nested alias lists recursively. `_value_text()`
-converts booleans to Cyclus-style `true`/`false` and converts `Commodity` or
-`Recipe` objects to their names.
+`_field()` walks the recursive `ValueShape` and XML alias trees together.
+Vectors become repeated elements, pairs become ordered sibling structures, and
+maps accept mappings or sequences of key/value pairs. This handles structures
+such as Mixer streams, Separations streams, and arbitrary deeper combinations
+without archetype-specific serializer code. `_value_text()` converts booleans
+to Cyclus-style `true`/`false` and converts `Commodity` or `Recipe` objects to
+their names.
 
 `export_xml()` writes to a temporary file in the target directory, preserves
 existing POSIX file permissions when replacing an existing file, and uses
@@ -560,12 +577,6 @@ existing POSIX file permissions when replacing an existing file, and uses
 `_schema_processing_instruction()` writes the `xml-model` header. If the schema
 path is absolute and an output path is known, `_schema_href()` attempts to make
 the href relative to the output file directory.
-
-Known limitation: `_field()` cannot yet reconstruct arbitrary nested Relax NG
-structures from shallow field metadata. This is visible in complex Cycamore
-stream fields. The simple bakery example runs through Cyclus; the larger
-notebook examples are intentionally marked as authoring examples until nested
-field serialization is improved.
 
 ## Execution
 
@@ -602,7 +613,11 @@ If only an input path is supplied, the output path receives the same stem with
 
 `run_command()` uses `subprocess.Popen` so stdout and stderr can be streamed
 while also captured. It starts two daemon threads that drain each stream into
-lists and optionally mirror output to `sys.stdout`/`sys.stderr`.
+lists and optionally mirror output to `sys.stdout`/`sys.stderr`. The drains read
+bounded byte chunks, decode UTF-8 incrementally, and synchronize display writes.
+Chunked writes are important in notebooks: mirroring one character per write
+causes Jupyter to render interleaved stdout, stderr, and carriage-return progress
+updates as fragmented lines.
 
 `RunResult` is frozen and stores:
 
@@ -708,10 +723,10 @@ explicit.
 
 ## Extension Points And Known Gaps
 
-The most important technical gap is nested complex field support. Mixer and
-Separations stream fields need richer metadata interpretation and XML
-serialization before the larger examples can become validated Cyclus run
-scenarios.
+Recursive standard C++ containers are supported when Cyclus reports compatible
+type and XML alias trees. Relax NG alternatives or custom input types outside
+the supported scalar/vector/list/set/pair/map vocabulary remain
+compatibility-report items rather than being silently interpreted.
 
 Other likely extension points:
 

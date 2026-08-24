@@ -8,8 +8,13 @@ from collections.abc import Iterator
 from typing import Any
 
 from .catalog import ArchetypeSpec, FieldSpec
-
-UNSET = object()
+from .shapes import (
+    ValueShape,
+    alias_problem,
+    map_items,
+    sequence_items,
+    split_uitype,
+)
 
 
 class Prototype:
@@ -78,6 +83,34 @@ class Prototype:
             if field.name in self._explicit:
                 yield field, self._values[field.name]
 
+    @classmethod
+    def field_example(cls, name: str) -> str:
+        """Describe aliases and show a small Python value for a field."""
+
+        return _field_example_text(_class_field(cls, name))
+
+    @classmethod
+    def field_example_value(cls, name: str) -> Any:
+        """Return the ordinary Python value used in a field's example."""
+
+        field = _class_field(cls, name)
+        _ensure_example_supported(field)
+        return field.value_shape.example(field.uitype, alias=field.alias)
+
+    @classmethod
+    def describe_field(cls, name: str) -> str:
+        """Describe a field's accepted Python shape and show an example."""
+
+        field = _class_field(cls, name)
+        required = "required" if field.required else "optional"
+        return "\n".join(
+            [
+                f"{cls.__name__}.{field.name} ({required})",
+                cls.field_example(name),
+                field.doc or "No field documentation supplied.",
+            ]
+        )
+
     def add(self, *children: Prototype) -> Prototype:
         """Nest institutions below a region."""
 
@@ -132,6 +165,11 @@ class Prototype:
         for field in self.fields:
             if field.required and not self.is_set(field.name):
                 problems.append(f"{label} is missing required field {field.name!r}")
+        for field, value in self.explicit_items():
+            try:
+                _validate_field_value(self, field, value)
+            except (TypeError, ValueError) as error:
+                problems.append(str(error))
         # Compatibility warnings are reported by discovery and strict mode.
         return problems
 
@@ -182,10 +220,50 @@ def make_archetype_class(
 
 
 def _annotation(field: FieldSpec) -> Any:
-    python_type = field.python_type
-    if python_type is list:
-        return list[Any]
-    return python_type
+    return field.value_shape.annotation()
+
+
+def _class_field(cls: type[Prototype], name: str) -> FieldSpec:
+    field = cls._archetype.field(name)
+    if field is not None:
+        return field
+    available = ", ".join(item.name for item in cls._archetype.fields) or "none"
+    raise KeyError(
+        f"{cls.__name__} has no field {name!r}. Available fields: {available}."
+    )
+
+
+def _ensure_example_supported(field: FieldSpec) -> None:
+    shape = field.value_shape
+    if not shape.supported:
+        raise TypeError(
+            f"Field {field.name!r} uses unsupported C++ type {field.cpp_type!r}."
+        )
+    if problem := alias_problem(shape, field.alias):
+        raise TypeError(
+            f"Field {field.name!r} has an incompatible XML alias: {problem}."
+        )
+
+
+def _field_example_text(field: FieldSpec) -> str:
+    _ensure_example_supported(field)
+    shape = field.value_shape
+    value = shape.example(field.uitype, alias=field.alias)
+    return "\n".join(
+        [
+            f"Example format: {shape.example_format(field.alias)}",
+            f"Example value:  {value!r}",
+        ]
+    )
+
+
+def _field_help_lines(field: FieldSpec) -> list[str]:
+    shape = field.value_shape
+    if not shape.children:
+        return [f"        Python type: {shape.type_expression()}"]
+    if not shape.supported or alias_problem(shape, field.alias):
+        return ["        Example unavailable; see compatibility warnings below."]
+    return [f"        {line}" for line in _field_example_text(field).splitlines()]
 
 
 def _class_doc(archetype: ArchetypeSpec) -> str:
@@ -208,6 +286,7 @@ def _class_doc(archetype: ArchetypeSpec) -> str:
         lines.append(
             f"    {field.name}: {field.doc or 'No field documentation supplied.'}"
         )
+        lines.extend(_field_help_lines(field))
     lines.extend(["", "Optional fields:"])
     if not optional:
         lines.append("    None.")
@@ -217,6 +296,7 @@ def _class_doc(archetype: ArchetypeSpec) -> str:
             f"    {field.name}{default}: "
             f"{field.doc or 'No field documentation supplied.'}"
         )
+        lines.extend(_field_help_lines(field))
     if archetype.warnings:
         lines.extend(["", "Compatibility warnings:"])
         lines.extend(f"    - {warning}" for warning in archetype.warnings)
@@ -224,29 +304,8 @@ def _class_doc(archetype: ArchetypeSpec) -> str:
 
 
 def _validate_field_value(owner: Prototype, field: FieldSpec, value: Any) -> None:
-    from .core import Commodity, Recipe
-
-    expected = field.python_type
-    reference_type = _reference_type(field.uitype)
-    if reference_type == "commodity" and isinstance(value, Commodity):
-        pass
-    elif reference_type == "recipe" and isinstance(value, Recipe):
-        pass
-    elif expected is float:
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise TypeError(f"{owner}.{field.name} must be a number.")
-    elif expected is int:
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise TypeError(f"{owner}.{field.name} must be an integer.")
-    elif expected is bool:
-        if not isinstance(value, bool):
-            raise TypeError(f"{owner}.{field.name} must be a boolean.")
-    elif expected is str:
-        if not isinstance(value, str):
-            raise TypeError(f"{owner}.{field.name} must be a string.")
-    elif expected is list:
-        if not isinstance(value, (list, tuple)):
-            raise TypeError(f"{owner}.{field.name} must be a list or tuple.")
+    path = f"{owner}.{field.name}"
+    _validate_shape_value(field.value_shape, value, field.uitype, path)
     if (
         field.value_range
         and isinstance(value, (int, float))
@@ -260,10 +319,94 @@ def _validate_field_value(owner: Prototype, field: FieldSpec, value: Any) -> Non
             )
 
 
+def _validate_shape_value(
+    shape: ValueShape, value: Any, uitype: Any, path: str
+) -> None:
+    from .core import Commodity, Recipe
+
+    semantic, child_ui = split_uitype(uitype, len(shape.children))
+    reference_type = _reference_type(semantic)
+    if reference_type == "commodity" and isinstance(value, Commodity):
+        return
+    if reference_type == "recipe" and isinstance(value, Recipe):
+        return
+    if shape.kind == "unsupported":
+        raise TypeError(f"{path} uses unsupported C++ type {shape.cpp_type}.")
+    if shape.kind == "float":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{path} must be a number; got {type(value).__name__}.")
+        return
+    if shape.kind == "int":
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"{path} must be an integer; got {type(value).__name__}.")
+        return
+    if shape.kind == "bool":
+        if not isinstance(value, bool):
+            raise TypeError(f"{path} must be a boolean; got {type(value).__name__}.")
+        return
+    if shape.kind == "string":
+        if not isinstance(value, str):
+            raise TypeError(f"{path} must be a string; got {type(value).__name__}.")
+        return
+    if shape.kind in {"vector", "list", "set"}:
+        items = sequence_items(value, allow_set=shape.kind == "set")
+        if items is None:
+            expected = (
+                "a set or non-string sequence"
+                if shape.kind == "set"
+                else "a non-string sequence"
+            )
+            raise TypeError(f"{path} must be {expected}.")
+        for index, item in enumerate(items):
+            _validate_shape_value(
+                shape.children[0], item, child_ui[0], f"{path}[{index}]"
+            )
+        return
+    if shape.kind == "pair":
+        if not isinstance(value, tuple) or len(value) != 2:
+            raise TypeError(f"{path} must be a two-item tuple.")
+        for index, (child, item, ui) in enumerate(
+            zip(shape.children, value, child_ui, strict=True)
+        ):
+            _validate_shape_value(child, item, ui, f"{path}[{index}]")
+        return
+    if shape.kind == "map":
+        entries = map_items(value)
+        if entries is None:
+            raise TypeError(
+                f"{path} must be a mapping or a sequence of two-item pairs."
+            )
+        for index, (key, item) in enumerate(entries):
+            rendered_key = _safe_repr(key)
+            if _has_earlier_equal_key(entries, index, key):
+                raise ValueError(f"{path} contains duplicate map key {rendered_key}.")
+            key_path = f"{path}[{rendered_key}] (key)"
+            _validate_shape_value(shape.children[0], key, child_ui[0], key_path)
+            _validate_shape_value(
+                shape.children[1], item, child_ui[1], f"{path}[{rendered_key}]"
+            )
+
+
+def _has_earlier_equal_key(
+    entries: list[tuple[Any, Any]], index: int, key: Any
+) -> bool:
+    for previous, _value in entries[:index]:
+        if previous is key or previous == key:
+            return True
+    return False
+
+
+def _safe_repr(value: Any) -> str:
+    try:
+        return repr(value)
+    except Exception:
+        return f"<{type(value).__name__}>"
+
+
 def _reference_type(uitype: str | list[Any] | None) -> str | None:
     values = uitype if isinstance(uitype, list) else [uitype]
     if any(value in {"incommodity", "outcommodity", "commodity"} for value in values):
         return "commodity"
-    if "recipe" in values:
+    if any(value in {"inrecipe", "outrecipe", "recipe"} for value in values):
         return "recipe"
     return None

@@ -1,7 +1,7 @@
 # Project Handoff
 
-Last updated: 2026-07-06
-Current planning branch: `milestone-five`
+Last updated: 2026-08-24
+Current planning branch: `nested-types`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -56,6 +56,9 @@ Implemented capabilities:
   pointing at the cached full Relax NG schema.
 - Optional scalar Cyclus control fields beyond duration, start year, and start
   month.
+- Recursive validation, type information, examples, and XML serialization for
+  standard nested C++ scalar, vector, list, set, pair, and map archetype fields.
+- Faithful live-tested Cycamore Mixer and Separations stream serialization.
 
 Cypher's workflow intentionally ends at the SQLite output. Cymetric remains
 responsible for database querying and analysis.
@@ -139,9 +142,9 @@ discovery cache are already installed. Full instructions are in
 
 - Compatibility warnings are nonfatal during ordinary discovery and are shown
   in its report. `--strict` makes them fatal.
-- The tested Cymetric environment currently reports compatibility warnings for
-  several complex or imperfectly annotated fields. These do not prevent Source,
-  Sink, NullInst, or NullRegion from supporting the bakery workflow.
+- The tested environment still reports nonfatal compatibility warnings for a
+  small number of imperfect range annotations, plus experimental warnings
+  emitted by Cyclus and its archetype libraries.
 - Generated stubs are written to Cypher's environment cache. Runtime imports
   work from the cache; editor configuration may need refinement before every
   IDE automatically discovers those external stubs.
@@ -155,6 +158,31 @@ discovery cache are already installed. Full instructions are in
 - The official Cymetric base and current Cypher image are Linux `amd64` only;
   multi-architecture and native Apple Silicon support are out of scope.
 - The public API remains pre-alpha and should be refined from hands-on use.
+
+## Nested field implementation
+
+The `nested-types` branch adds a recursive `ValueShape` model derived from
+Cyclus annotation types. It resolves annotation indirection used by Mixer and
+Separations, validates the XML alias tree during discovery, generates recursive
+runtime and stub annotations, validates nested Python values with precise error
+paths, and serializes the type and alias trees together.
+
+Maps accept either mappings or sequences of two-item pairs. Generated classes
+provide alias-aware `field_example(name)`, raw `field_example_value(name)`, and
+`describe_field(name)` so notebook users can inspect complicated fields without
+reading C++ source. The compact Python-shaped template labels positions with
+aliases such as `commod`, `buf_size`, `comp`, and `eff` without repeating the
+full recursive type at every nesting level.
+
+Execution streaming now reads bounded byte chunks and synchronizes display
+writes instead of flushing one character at a time. This preserves complete,
+separate stdout and stderr capture while preventing severely fragmented Cyclus
+output in Jupyter notebooks.
+
+Fixture coverage includes Mixer, Separations, and a stress type equivalent to
+`map<string, map<string, pair<double, string>>>`. Live container validation
+discovered the installed Cycamore metadata and successfully ran a one-timestep
+simulation containing both Mixer and Separations through Cyclus 1.6.0.
 
 ## Completed milestone-four work
 
