@@ -9,7 +9,6 @@ import pytest
 import cypher
 from cypher.catalog import Catalog, set_catalog
 from cypher.discovery import CyclusAdapter
-from cypher.errors import CypherError
 
 
 @pytest.fixture(scope="module")
@@ -19,11 +18,8 @@ def live_cyclus() -> tuple[Path, dict[str, Any]]:
         pytest.skip("set CYPHER_TEST_CYCLUS to run Cyclus integration tests")
     path = Path(executable)
     if not path.exists():
-        pytest.skip(f"configured Cyclus executable does not exist: {path}")
-    try:
-        metadata, _warnings = CyclusAdapter(path).metadata()
-    except CypherError as error:
-        pytest.skip(f"configured Cyclus environment is not runnable: {error}")
+        pytest.fail(f"configured Cyclus executable does not exist: {path}")
+    metadata, _warnings = CyclusAdapter(path).metadata()
     return path.resolve(), metadata
 
 

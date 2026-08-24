@@ -380,6 +380,6 @@ def test_separations_help_gives_a_compact_alias_template(nested_catalog) -> None
     assert example == "\n".join(
         [
             "Example format: {<commod>: (<buf_size>, {<comp>: <eff>})}",
-            "Example value:  {'commodity': (150.0, {922350000: 0.98})}",
+            "Example value:  {'commodity': (1.0, {922350000: 1.0})}",
         ]
     )

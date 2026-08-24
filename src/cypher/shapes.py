@@ -131,10 +131,6 @@ class ValueShape:
         if self.kind == "int":
             return 922350000 if semantic == "nuclide" else 1
         if self.kind == "float":
-            if alias == "buf_size":
-                return 150.0
-            if alias == "eff":
-                return 0.98
             return 1.0
         if self.kind == "bool":
             return True
