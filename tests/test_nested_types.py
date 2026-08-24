@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from xml.etree import ElementTree as ET
 
 import pytest
@@ -188,7 +188,7 @@ def test_annotation_indirection_preserves_real_nested_metadata(nested_catalog) -
     assert mixer is not None
     assert mixer.python_type is list
     assert mixer.value_shape.type_expression() == (
-        "list[tuple[tuple[float, float], Mapping[str, float] | "
+        "Sequence[tuple[tuple[float, float], Mapping[str, float] | "
         "Sequence[tuple[str, float]]]]"
     )
     assert separations is not None
@@ -311,6 +311,26 @@ def test_nested_validation_reports_the_precise_value_path(nested_catalog) -> Non
         module.Stress(
             "Stress",
             records={"outer": {"inner": ("not-a-double", "description")}},
+        )
+
+
+def test_container_annotations_match_accepted_inputs(nested_catalog) -> None:
+    module = importlib.import_module("cypher.test")
+    signature = inspect.signature(module.Stress)
+
+    assert signature.parameters["ordered"].annotation == Sequence[str]
+    assert signature.parameters["unique"].annotation == Set[int] | Sequence[int]
+    module.Stress(
+        "Stress",
+        records={"outer": {"inner": (3.14, "description")}},
+        ordered=("first", "second"),
+        unique=frozenset({1, 2}),
+    )
+
+    with pytest.raises(TypeError, match="must be a two-item tuple"):
+        module.Stress(
+            "Stress",
+            records={"outer": {"inner": [3.14, "description"]}},
         )
 
 

@@ -11,7 +11,6 @@ from .catalog import ArchetypeSpec, FieldSpec
 from .shapes import (
     ValueShape,
     alias_problem,
-    is_sequence,
     map_items,
     sequence_items,
     split_uitype,
@@ -348,9 +347,9 @@ def _validate_shape_value(
         items = sequence_items(value, allow_set=shape.kind == "set")
         if items is None:
             expected = (
-                "a set, list, or tuple"
+                "a set or non-string sequence"
                 if shape.kind == "set"
-                else "a list or tuple"
+                else "a non-string sequence"
             )
             raise TypeError(f"{path} must be {expected}.")
         for index, item in enumerate(items):
@@ -359,8 +358,8 @@ def _validate_shape_value(
             )
         return
     if shape.kind == "pair":
-        if not is_sequence(value) or len(value) != 2:
-            raise TypeError(f"{path} must be a two-item tuple or list.")
+        if not isinstance(value, tuple) or len(value) != 2:
+            raise TypeError(f"{path} must be a two-item tuple.")
         for index, (child, item, ui) in enumerate(
             zip(shape.children, value, child_ui, strict=True)
         ):

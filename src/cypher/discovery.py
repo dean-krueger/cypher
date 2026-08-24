@@ -219,7 +219,7 @@ def write_stubs(catalog: Catalog, root: Path | None = None) -> tuple[Path, ...]:
     paths = []
     for library in catalog.libraries:
         lines = [
-            "from collections.abc import Mapping, Sequence",
+            "from collections.abc import Mapping, Sequence, Set",
             "from typing import Any",
             "from cypher.archetype import Prototype",
             "",

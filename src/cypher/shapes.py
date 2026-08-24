@@ -74,10 +74,10 @@ class ValueShape:
         if self.kind == "string":
             return str
         if self.kind in {"vector", "list"}:
-            return list[self.children[0].annotation()]
+            return Sequence[self.children[0].annotation()]
         if self.kind == "set":
             child = self.children[0].annotation()
-            return set[child] | Sequence[child]
+            return Set[child] | Sequence[child]
         if self.kind == "pair":
             return tuple[
                 self.children[0].annotation(), self.children[1].annotation()
@@ -101,10 +101,10 @@ class ValueShape:
         if self.kind in scalar:
             return scalar[self.kind]
         if self.kind in {"vector", "list"}:
-            return f"list[{self.children[0].type_expression()}]"
+            return f"Sequence[{self.children[0].type_expression()}]"
         if self.kind == "set":
             child = self.children[0].type_expression()
-            return f"set[{child}] | Sequence[{child}]"
+            return f"Set[{child}] | Sequence[{child}]"
         if self.kind == "pair":
             first, second = self.children
             return f"tuple[{first.type_expression()}, {second.type_expression()}]"
