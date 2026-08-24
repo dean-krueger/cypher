@@ -392,6 +392,19 @@ def test_map_pair_sequences_reject_duplicate_keys(nested_catalog) -> None:
         )
 
 
+def test_map_pair_sequences_require_tuple_entries(nested_catalog) -> None:
+    module = importlib.import_module("cypher.test")
+
+    with pytest.raises(
+        TypeError,
+        match="must be a mapping or a sequence of two-item pairs",
+    ):
+        module.Stress(
+            "Stress",
+            records=[["outer", {"inner": (2.5, "description")}]],
+        )
+
+
 def test_separations_help_gives_a_compact_alias_template(nested_catalog) -> None:
     module = importlib.import_module("cypher.test")
 

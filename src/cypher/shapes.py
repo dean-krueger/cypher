@@ -192,7 +192,7 @@ def map_items(value: Any) -> list[tuple[Any, Any]] | None:
         return None
     entries = []
     for item in value:
-        if not is_sequence(item) or len(item) != 2:
+        if not isinstance(item, tuple) or len(item) != 2:
             return None
         entries.append((item[0], item[1]))
     return entries
