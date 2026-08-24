@@ -9,6 +9,7 @@ import pytest
 
 import cypher
 from cypher.catalog import Catalog, set_catalog
+from cypher.errors import ValidationError
 
 
 @pytest.fixture
@@ -62,7 +63,12 @@ def nested_catalog() -> Catalog:
         ],
     ]
     metadata = {
-        "specs": [":test:Mixer", ":test:Separations", ":test:Stress"],
+        "specs": [
+            ":test:Mixer",
+            ":test:RecipeReferences",
+            ":test:Separations",
+            ":test:Stress",
+        ],
         "annotations": {
             ":test:Mixer": {
                 "entity": "facility",
@@ -101,6 +107,25 @@ def nested_catalog() -> Catalog:
                     },
                 },
             },
+            ":test:RecipeReferences": {
+                "entity": "facility",
+                "vars": {
+                    "groups": {
+                        "alias": [
+                            "groups",
+                            [["recipes", "item"], "label", "recipe"],
+                        ],
+                        "type": [
+                            "std::vector",
+                            ["std::map", "std::string", "std::string"],
+                        ],
+                        "uitype": [
+                            "oneormore",
+                            ["oneormore", "string", "inrecipe"],
+                        ],
+                    },
+                },
+            },
             ":test:Stress": {
                 "entity": "facility",
                 "vars": {
@@ -122,6 +147,7 @@ def nested_catalog() -> Catalog:
         "schema": {
             ":test:Mixer": '<element name="in_streams"><text/></element>',
             ":test:Separations": '<element name="streams"><text/></element>',
+            ":test:RecipeReferences": '<element name="groups"><text/></element>',
             ":test:Stress": """
                 <interleave>
                   <element name="records"><text/></element>
@@ -286,6 +312,38 @@ def test_nested_validation_reports_the_precise_value_path(nested_catalog) -> Non
             "Stress",
             records={"outer": {"inner": ("not-a-double", "description")}},
         )
+
+
+def test_nested_recipe_names_are_validated_recursively(nested_catalog) -> None:
+    module = importlib.import_module("cypher.test")
+    references = module.RecipeReferences(
+        "References",
+        groups=[{"fuel": "known_recipe", "waste": "missing_recipe"}],
+    )
+    simulation = _simulation(nested_catalog, references)
+    simulation.add(
+        cypher.Recipe(
+            "known_recipe", basis="mass", composition={922350000: 1.0}
+        )
+    )
+
+    with pytest.raises(ValidationError, match="unknown recipe 'missing_recipe'"):
+        simulation.validate()
+
+
+def test_nested_recipe_names_accept_declared_recipes(nested_catalog) -> None:
+    module = importlib.import_module("cypher.test")
+    references = module.RecipeReferences(
+        "References", groups=[{"fuel": "known_recipe"}]
+    )
+    simulation = _simulation(nested_catalog, references)
+    simulation.add(
+        cypher.Recipe(
+            "known_recipe", basis="mass", composition={922350000: 1.0}
+        )
+    )
+
+    simulation.validate()
 
 
 def test_maps_accept_sequence_of_pairs_for_unhashable_future_keys(
