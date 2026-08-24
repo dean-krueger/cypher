@@ -138,8 +138,22 @@ separations = cycamore.Separations(
 )
 ```
 
-The generated signature and docstring show the Python shape discovered for the
-active Cyclus environment. Field-level helpers are convenient in IPython:
+The generated signature and docstring show the interface discovered for the
+active Cyclus environment. Start with Python's built-in `help()` when exploring
+an archetype in a terminal or notebook:
+
+```python
+help(cycamore.Source)
+help(cycamore.Separations)
+```
+
+The output includes the generated constructor signature, required and optional
+field names, defaults, Cyclus field documentation, and compatibility warnings.
+Scalar fields show their Python type. Nested fields show a compact,
+alias-labeled example format and example value directly in the corresponding
+field description.
+
+When you only need one field, the field-level helpers provide a shorter view:
 
 ```python
 cycamore.Separations.describe_field("streams")
@@ -151,8 +165,15 @@ aliases, followed by an example value.
 `field_example_value()` returns just the ordinary Python example value when that
 is more convenient for programmatic inspection.
 
-Maps accept either a Python mapping or a sequence of two-item pairs. The latter
-form permits object references or complex keys that are not hashable:
+The accepted container spellings are consistent at every nesting depth:
+
+- C++ vectors and lists accept Python sequences such as lists or tuples;
+- C++ sets accept Python sets or sequences;
+- C++ pairs require two-item Python tuples; and
+- C++ maps accept either a mapping or a sequence of two-item tuples.
+
+The sequence form for a map permits object references or complex keys that are
+not hashable:
 
 ```python
 streams=[
@@ -161,8 +182,12 @@ streams=[
 ```
 
 Validation follows the complete nested shape and reports the path to an invalid
-leaf. Serialization walks the same shape together with Cyclus's XML aliases, so
-nesting depth is not limited to a fixed number of container layers.
+leaf. `Simulation.validate()` rechecks current values, so it also catches an
+invalid mutation made inside a previously assigned dictionary or list. Recipe
+names identified by nested `recipe`, `inrecipe`, or `outrecipe` metadata are
+checked against the simulation's recipes at any depth. Serialization walks the
+same shape together with Cyclus's XML aliases, so nesting depth is not limited
+to a fixed number of container layers.
 
 ## Validate And Export XML
 
