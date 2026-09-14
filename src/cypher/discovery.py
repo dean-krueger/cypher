@@ -11,7 +11,15 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .catalog import Catalog, cache_file, cache_root, set_catalog
+from .catalog import (
+    DEFAULT_CONTROL_FIELDS,
+    Catalog,
+    ControlField,
+    cache_file,
+    cache_root,
+    control_fields_from_schema,
+    set_catalog,
+)
 from .errors import CyclusInvocationError, DiscoveryError
 from .shapes import ValueShape
 
@@ -181,6 +189,7 @@ def discover(
     adapter = CyclusAdapter(executable)
     metadata, process_warnings = adapter.metadata()
     base_schema_path, schema_warnings = adapter.base_schema_path()
+    control_fields, control_warnings = _discover_control_fields(base_schema_path)
     target_cache = cache_path or cache_file()
     full_schema_path, full_schema_warnings = adapter.full_schema_path(
         target_cache.parent / "schemas"
@@ -193,13 +202,20 @@ def discover(
         executable_mtime_ns=stat.st_mtime_ns,
         base_schema_path=base_schema_path,
         full_schema_path=full_schema_path,
-        discovery_warnings=process_warnings + schema_warnings + full_schema_warnings,
+        control_fields=control_fields,
+        discovery_warnings=(
+            process_warnings
+            + schema_warnings
+            + control_warnings
+            + full_schema_warnings
+        ),
     )
     compatibility_warnings = [
         f"{archetype.spec}: {warning}"
         for archetype in catalog.archetypes.values()
         for warning in archetype.warnings
     ]
+    compatibility_warnings.extend(control_warnings)
     if strict and compatibility_warnings:
         raise DiscoveryError(
             "Strict discovery rejected unsupported metadata:\n- "
@@ -211,12 +227,67 @@ def discover(
     return DiscoveryResult(catalog=catalog, cache_path=saved, stub_paths=stubs)
 
 
+def _discover_control_fields(
+    base_schema_path: str | None,
+) -> tuple[tuple[ControlField, ...], tuple[str, ...]]:
+    """Load supported scalar control fields without making schema access fatal."""
+
+    if base_schema_path is None:
+        return DEFAULT_CONTROL_FIELDS, ()
+    try:
+        schema = Path(base_schema_path).read_text(encoding="utf-8")
+    except OSError as error:
+        return (
+            DEFAULT_CONTROL_FIELDS,
+            (
+                f"Could not read Cyclus base control grammar {base_schema_path}: "
+                f"{error}",
+            ),
+        )
+    fields, warnings = control_fields_from_schema(schema)
+    if not fields:
+        return (
+            DEFAULT_CONTROL_FIELDS,
+            warnings + ("Using Cypher's built-in scalar control fields instead.",),
+        )
+    return fields, warnings
+
+
 def write_stubs(catalog: Catalog, root: Path | None = None) -> tuple[Path, ...]:
     """Write environment-local ``.pyi`` interfaces for discovered libraries."""
 
     target_root = root or cache_root() / "stubs" / "cypher"
     target_root.mkdir(parents=True, exist_ok=True)
     paths = []
+    control_parameters = ["self", "*"]
+    for field in catalog.control_fields:
+        default = "" if field.required else " = ..."
+        control_parameters.append(
+            f"{field.name}: {_control_stub_type(field.kind)} | None{default}"
+        )
+    control_stub = target_root / "__init__.pyi"
+    control_doc = (
+        "    \"\"\"Scalar controls discovered from the active Cyclus grammar."
+        "\"\"\""
+    )
+    control_stub.write_text(
+        "\n".join(
+            [
+                "from .core import Commodity, Recipe, Simulation",
+                "",
+                "class Control:",
+                control_doc,
+                f"    def __init__({', '.join(control_parameters)}) -> None: ...",
+                "    @classmethod",
+                "    def available_fields(cls) -> tuple[object, ...]: ...",
+                "    @classmethod",
+                "    def describe_field(cls, name: str) -> str: ...",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    paths.append(control_stub)
     for library in catalog.libraries:
         lines = [
             "from collections.abc import Mapping, Sequence, Set",
@@ -249,6 +320,10 @@ def write_stubs(catalog: Catalog, root: Path | None = None) -> tuple[Path, ...]:
     marker = target_root / "py.typed"
     marker.touch()
     return tuple(paths)
+
+
+def _control_stub_type(kind: str) -> str:
+    return {"bool": "bool", "float": "float", "int": "int", "string": "str"}[kind]
 
 
 def compatibility_report(catalog: Catalog) -> str:

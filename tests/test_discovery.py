@@ -7,6 +7,7 @@ import pytest
 
 from cypher.discovery import (
     CyclusAdapter,
+    _discover_control_fields,
     compatibility_report,
     resolve_cyclus_executable,
     write_stubs,
@@ -81,6 +82,30 @@ def test_base_schema_path_uses_cyclus_rng_schema(monkeypatch, tmp_path: Path) ->
     assert warnings == ()
 
 
+def test_control_fields_are_loaded_from_the_discovered_base_schema(
+    tmp_path: Path,
+) -> None:
+    schema = tmp_path / "cyclus.rng"
+    schema.write_text(
+        """
+        <grammar xmlns="http://relaxng.org/ns/structure/1.0">
+          <start><element name="simulation"><element name="control"><interleave>
+            <element name="duration"><data type="nonNegativeInteger"/></element>
+            <optional><element name="decay_nuclide">
+              <data type="string"/>
+            </element></optional>
+          </interleave></element></element></start>
+        </grammar>
+        """,
+        encoding="utf-8",
+    )
+
+    fields, warnings = _discover_control_fields(str(schema))
+
+    assert [field.name for field in fields] == ["duration", "decay_nuclide"]
+    assert warnings == ()
+
+
 def test_full_schema_path_uses_cyclus_new_file(monkeypatch, tmp_path: Path) -> None:
     executable = _executable(tmp_path / "cyclus")
 
@@ -115,13 +140,20 @@ def test_full_schema_path_uses_cyclus_new_file(monkeypatch, tmp_path: Path) -> N
 def test_stubs_are_written_for_each_library(tmp_path: Path, catalog) -> None:
     paths = write_stubs(catalog, tmp_path)
 
-    assert {path.name for path in paths} == {"agents.pyi", "cycamore.pyi"}
+    assert {path.name for path in paths} == {
+        "__init__.pyi",
+        "agents.pyi",
+        "cycamore.pyi",
+    }
     cycamore_stub = (tmp_path / "cycamore.pyi").read_text()
     assert "class Source" in cycamore_stub
     assert (
         "name: str | None = ..., *, outcommod: str, throughput: float = ..."
         in cycamore_stub
     )
+    control_stub = (tmp_path / "__init__.pyi").read_text()
+    assert "class Control" in control_stub
+    assert "start_year: int | None" in control_stub
     assert (tmp_path / "py.typed").exists()
 
 

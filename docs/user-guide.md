@@ -53,6 +53,13 @@ Discovery reports available libraries, compatibility warnings, the metadata
 cache path, and generated type-stub paths. Rerun discovery when the Cyclus
 installation, Cycamore installation, or active container image changes.
 
+Discovery also reads the scalar portion of Cyclus's base `<control>` grammar.
+A compatible newly installed control field is therefore available after a
+refresh without requiring a Cypher release. Cypher keeps a few handwritten
+Python conveniences such as `start_year` for Cyclus's `<startyear>` and
+reports complex control structures, such as `<solver>`, as unsupported rather
+than guessing how to author them.
+
 Use strict mode when you want discovery warnings to fail early:
 
 ```console
@@ -101,6 +108,17 @@ region.add(institution)
 
 simulation.add(toast_recipe, region)
 ```
+
+Inspect scalar control fields from the active Cyclus grammar at runtime:
+
+```python
+help(cypher.Control)
+cypher.Control.describe_field("decay_nuclide")
+```
+
+Discovery writes an environment-local `Control` type stub for editor signature
+help and completion. Configure an editor to use Cypher's generated stub
+directory if it does not locate that cache automatically.
 
 The core pattern is:
 

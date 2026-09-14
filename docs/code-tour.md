@@ -197,6 +197,7 @@ the richer runtime annotation and generated-stub expression used for authoring.
 - executable modification time;
 - base schema path;
 - generated full schema path;
+- supported scalar control fields normalized from the base grammar;
 - discovery warnings;
 - cache format version.
 
@@ -412,19 +413,26 @@ and a region cannot initially deploy a facility directly.
 `core.py` defines stable Cyclus input concepts that are not discovered
 archetypes.
 
-`Control` stores top-level simulation settings. Field metadata lives in
-`CONTROL_FIELDS`, a table of `ControlField` objects. This table drives:
+`Control` stores top-level simulation settings. Discovery parses the supported
+scalar portion of the base `<control>` grammar into `ControlField` objects in
+the cached catalog; a built-in field set keeps ordinary core authoring usable
+when no discovery cache exists. This metadata drives:
 
 - assignment validation;
 - required-field validation;
 - XML field names;
 - deterministic output order.
 
-Required fields are currently duration, start year, and start month. Optional
-scalar fields include simhandle, decay, dt, explicit inventory flags,
-tolerances, seed, and stride. Validation is intentionally limited to clear
-scalar constraints: type checks, month range, nonnegative or positive numeric
-bounds, and the known decay choices.
+Cypher retains a small handwritten policy layer for `startyear` → `start_year`,
+`startmonth` → `start_month`, month bounds, and known decay choices. Other
+compatible scalar additions, such as `decay_nuclide`, become available after
+discovery without a Cypher release. Complex control structures such as
+`solver` remain compatibility-report items rather than being guessed.
+
+`Control.available_fields()` and `Control.describe_field()` expose the active
+schema model at runtime. Its generated runtime signature supports IPython help,
+and discovery writes an environment-local `cypher/__init__.pyi` stub so editors
+can offer the same fields when configured to locate Cypher's stub cache.
 
 `Commodity` is a named exchange commodity plus optional solver priority.
 Commodities stringify to their names, and XML serialization writes only a
