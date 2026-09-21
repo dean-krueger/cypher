@@ -1,7 +1,7 @@
 # Project Handoff
 
-Last updated: 2026-08-24
-Current planning branch: `nested-types`
+Last updated: 2026-09-21
+Current planning branch: `flexible-control`
 
 This document records short-term implementation state so development can resume
 without relying on chat history. Durable project rules remain in `AGENTS.md`;
@@ -211,6 +211,22 @@ Milestone four implementation is complete locally:
   Cymetric base image.
 - The image verifier now launches the registered kernel and executes a simple
   `plt.plot(...)` smoke test.
+
+## Flexible control discovery
+
+The `flexible-control` branch extends control support from a fixed handwritten
+field table to the supported scalar fields in the selected Cyclus base
+`<control>` grammar. Discovery caches those fields and their documentation;
+`Control` validates and serializes them in grammar order. The familiar
+`startyear` and `startmonth` fields retain the Python aliases `start_year` and
+`start_month`, and the established scalar policies (for example month bounds
+and decay choices) remain handwritten.
+
+`Control.available_fields()`, `Control.describe_field()`, runtime help, and
+the generated cache-local `cypher/__init__.pyi` stub expose the active
+environment's fields. Unsupported complex control structures are compatibility
+warnings; if no usable base grammar is available, Cypher falls back to its
+built-in scalar field set.
 
 ## Milestone-five documentation work
 

@@ -75,30 +75,30 @@ def test_optional_control_fields_serialize_in_grammar_order(catalog) -> None:
     <stride>1234</stride>"""
 
 
-def test_discovered_control_field_is_validated_documented_and_serialized(
+def test_discovered_scalar_control_field_is_validated_documented_and_serialized(
     catalog,
 ) -> None:
     catalog.control_fields = (
         *catalog.control_fields,
         ControlField(
-            "decay_nuclide",
-            "decay_nuclide",
+            "additional_scalar",
+            "additional_scalar",
             kind="string",
-            doc="Nuclide whose fractional decay sets the tracking threshold.",
+            doc="An additional scalar setting discovered from the base grammar.",
         ),
     )
     control = cypher.Control(
         duration=1,
         start_year=2000,
         start_month=1,
-        decay_nuclide="Am241",
+        additional_scalar="example",
     )
     simulation = cypher.Simulation(control, schema_path=None, catalog=catalog)
 
-    assert "decay_nuclide" in inspect.signature(cypher.Control).parameters
-    assert "decay_nuclide" in cypher.Control.__doc__
-    assert "tracking threshold" in cypher.Control.describe_field("decay_nuclide")
-    assert "<decay_nuclide>Am241</decay_nuclide>" in simulation.to_xml()
+    assert "additional_scalar" in inspect.signature(cypher.Control).parameters
+    assert "additional_scalar" in cypher.Control.__doc__
+    assert "base grammar" in cypher.Control.describe_field("additional_scalar")
+    assert "<additional_scalar>example</additional_scalar>" in simulation.to_xml()
 
 
 def test_unknown_control_field_is_actionable() -> None:

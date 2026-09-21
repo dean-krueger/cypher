@@ -113,7 +113,8 @@ Inspect scalar control fields from the active Cyclus grammar at runtime:
 
 ```python
 help(cypher.Control)
-cypher.Control.describe_field("decay_nuclide")
+fields = cypher.Control.available_fields()
+cypher.Control.describe_field(fields[-1].name)
 ```
 
 Discovery writes an environment-local `Control` type stub for editor signature

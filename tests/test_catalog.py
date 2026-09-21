@@ -37,8 +37,8 @@ def test_control_fields_are_normalized_from_base_grammar() -> None:
                  xmlns:a="http://relaxng.org/ns/annotation/1.0">
           <start><element name="simulation"><element name="control"><interleave>
             <element name="duration"><data type="nonNegativeInteger"/></element>
-            <optional><element name="decay_nuclide">
-              <a:documentation>Threshold nuclide.</a:documentation><data type="string"/>
+            <optional><element name="additional_scalar">
+              <a:documentation>An additional scalar setting.</a:documentation><data type="string"/>
             </element></optional>
             <optional><element name="solver"><interleave/></element></optional>
           </interleave></element></element></start>
@@ -48,9 +48,9 @@ def test_control_fields_are_normalized_from_base_grammar() -> None:
 
     assert [(field.name, field.kind, field.required) for field in fields] == [
         ("duration", "int", True),
-        ("decay_nuclide", "string", False),
+        ("additional_scalar", "string", False),
     ]
-    assert fields[1].doc == "Threshold nuclide."
+    assert fields[1].doc == "An additional scalar setting."
     assert "solver" in "\n".join(warnings)
 
 

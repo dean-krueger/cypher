@@ -146,13 +146,14 @@ Cypher records warnings and proceeds with archetype metadata when possible.
 1. create a `CyclusAdapter`;
 2. collect metadata;
 3. collect base schema provenance;
-4. generate and cache the full schema;
-5. stat the executable for stale-cache detection;
-6. create a `Catalog` with `Catalog.from_metadata()`;
-7. optionally fail on compatibility warnings in strict mode;
-8. save the catalog;
-9. write environment-local type stubs;
-10. set the active in-process catalog.
+4. parse its supported scalar control fields;
+5. generate and cache the full schema;
+6. stat the executable for stale-cache detection;
+7. create a `Catalog` with `Catalog.from_metadata()`;
+8. optionally fail on compatibility warnings in strict mode;
+9. save the catalog;
+10. write environment-local type stubs;
+11. set the active in-process catalog.
 
 The result is a `DiscoveryResult` containing the catalog, the saved cache path,
 and generated stub paths.
@@ -293,11 +294,13 @@ the active environment is, and where support is incomplete.
 `discovery.write_stubs()` writes `.pyi` files under the cache root:
 
 ```text
+<cache>/stubs/cypher/__init__.pyi
 <cache>/stubs/cypher/<library>.pyi
 ```
 
-Each discovered library receives a stub module with one class per archetype.
-The generated signatures include:
+The package `__init__.pyi` describes the discovered scalar `Control` keyword
+arguments. Each discovered library receives a stub module with one class per
+archetype. The generated signatures include:
 
 - `name: str | None = ...`;
 - required fields without defaults;
@@ -425,9 +428,9 @@ when no discovery cache exists. This metadata drives:
 
 Cypher retains a small handwritten policy layer for `startyear` → `start_year`,
 `startmonth` → `start_month`, month bounds, and known decay choices. Other
-compatible scalar additions, such as `decay_nuclide`, become available after
-discovery without a Cypher release. Complex control structures such as
-`solver` remain compatibility-report items rather than being guessed.
+compatible scalar additions become available after discovery without a Cypher
+release. Complex control structures such as `solver` remain
+compatibility-report items rather than being guessed.
 
 `Control.available_fields()` and `Control.describe_field()` expose the active
 schema model at runtime. Its generated runtime signature supports IPython help,

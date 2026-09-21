@@ -91,7 +91,7 @@ def test_control_fields_are_loaded_from_the_discovered_base_schema(
         <grammar xmlns="http://relaxng.org/ns/structure/1.0">
           <start><element name="simulation"><element name="control"><interleave>
             <element name="duration"><data type="nonNegativeInteger"/></element>
-            <optional><element name="decay_nuclide">
+            <optional><element name="additional_scalar">
               <data type="string"/>
             </element></optional>
           </interleave></element></element></start>
@@ -102,7 +102,7 @@ def test_control_fields_are_loaded_from_the_discovered_base_schema(
 
     fields, warnings = _discover_control_fields(str(schema))
 
-    assert [field.name for field in fields] == ["duration", "decay_nuclide"]
+    assert [field.name for field in fields] == ["duration", "additional_scalar"]
     assert warnings == ()
 
 
