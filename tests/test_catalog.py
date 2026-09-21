@@ -38,7 +38,8 @@ def test_control_fields_are_normalized_from_base_grammar() -> None:
           <start><element name="simulation"><element name="control"><interleave>
             <element name="duration"><data type="nonNegativeInteger"/></element>
             <optional><element name="additional_scalar">
-              <a:documentation>An additional scalar setting.</a:documentation><data type="string"/>
+              <a:documentation>An additional scalar setting.</a:documentation>
+              <data type="string"/>
             </element></optional>
             <optional><element name="solver"><interleave/></element></optional>
           </interleave></element></element></start>
