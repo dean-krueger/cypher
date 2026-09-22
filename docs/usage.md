@@ -23,8 +23,10 @@ Cypher selects an executable in this order:
 3. `cyclus` on `PATH`
 
 The command reports discovered libraries and compatibility warnings, caches
-normalized metadata, and generates environment-local type stubs. Repeat it
-after changing the Cyclus installation or installed archetype libraries.
+normalized metadata, and generates environment-local type stubs. It also reads
+the supported scalar fields in the selected Cyclus base `<control>` grammar.
+Repeat it after changing the Cyclus installation or installed archetype
+libraries.
 
 Use strict mode when every compatibility warning should fail discovery:
 
@@ -93,8 +95,10 @@ simulation = cypher.Simulation()
 simulation.add(cypher.Control(duration=10, start_year=2000, start_month=1))
 ```
 
-Cypher also supports scalar optional control fields from the base Cyclus
-grammar:
+After discovery, `Control` accepts the supported scalar fields from the active
+Cyclus base grammar. This makes compatible additions available after a
+discovery refresh rather than a Cypher release. For example, an installation
+with the familiar optional fields can use:
 
 ```python
 control = cypher.Control(
@@ -113,7 +117,20 @@ control = cypher.Control(
 
 Optional control values are omitted from XML unless explicitly supplied.
 Cypher validates clear scalar constraints, such as months, boolean flags,
-positive seeds, and the supported decay modes, before writing XML.
+positive seeds, and the supported decay modes, before writing XML. Complex
+control structures are reported as compatibility warnings rather than guessed.
+
+Inspect the fields and documentation for the active environment with:
+
+```python
+help(cypher.Control)
+fields = cypher.Control.available_fields()
+print(cypher.Control.describe_field(fields[-1].name))
+```
+
+The discovery cache also contains a generated `Control` stub for editor
+completion and signature help. Configure an editor to use Cypher's generated
+stub directory if it does not find that cache automatically.
 
 ### Nested archetype fields
 

@@ -5,11 +5,12 @@ from __future__ import annotations
 import warnings
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from inspect import Parameter, Signature
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .archetype import Prototype
-from .catalog import Catalog, get_catalog
+from .catalog import DEFAULT_CONTROL_FIELDS, Catalog, ControlField, get_catalog
 from .errors import DiscoveryError, ValidationError
 from .shapes import ValueShape, map_items, sequence_items, split_uitype
 
@@ -20,74 +21,114 @@ AUTO_SCHEMA_PATH = "auto"
 SchemaPath = str | Path | None | bool
 
 
-@dataclass
-class ControlField:
-    """Metadata for one scalar field in the Cyclus control block."""
-
-    name: str
-    xml_name: str
-    required: bool = False
-    type_: type[Any] = str
-    minimum: int | float | None = None
-    maximum: int | float | None = None
-    choices: tuple[str, ...] = ()
+def _control_fields() -> tuple[ControlField, ...]:
+    catalog = get_catalog(required=False)
+    return catalog.control_fields if catalog is not None else DEFAULT_CONTROL_FIELDS
 
 
-CONTROL_FIELDS: tuple[ControlField, ...] = (
-    ControlField("simhandle", "simhandle", type_=str),
-    ControlField("duration", "duration", required=True, type_=int, minimum=0),
-    ControlField("start_year", "startyear", required=True, type_=int, minimum=0),
-    ControlField(
-        "start_month", "startmonth", required=True, type_=int, minimum=1, maximum=12
-    ),
-    ControlField("decay", "decay", type_=str, choices=("never", "manual", "lazy")),
-    ControlField("dt", "dt", type_=int, minimum=0),
-    ControlField("explicit_inventory", "explicit_inventory", type_=bool),
-    ControlField(
-        "explicit_inventory_compact", "explicit_inventory_compact", type_=bool
-    ),
-    ControlField("tolerance_generic", "tolerance_generic", type_=float),
-    ControlField("tolerance_resource", "tolerance_resource", type_=float),
-    ControlField("seed", "seed", type_=int, minimum=1),
-    ControlField("stride", "stride", type_=int, minimum=1),
-)
-_CONTROL_FIELD_BY_NAME = {field.name: field for field in CONTROL_FIELDS}
+def _control_doc() -> str:
+    lines = [
+        "Core Cyclus settings plus scalar fields discovered from its base grammar.",
+        "",
+        "Run `cypher discover` after changing Cyclus to refresh these fields.",
+    ]
+    for required, heading in ((True, "Required fields"), (False, "Optional fields")):
+        fields = [field for field in _control_fields() if field.required is required]
+        if not fields:
+            continue
+        lines.extend(["", f"{heading}:"])
+        for field in fields:
+            description = f" — {field.doc}" if field.doc else ""
+            lines.append(f"- {field.name}: {field.kind}{description}")
+    return "\n".join(lines)
 
 
-@dataclass
-class Control:
-    """Core Cyclus simulation control settings."""
+class _ControlMeta(type):
+    def __getattribute__(cls, name: str) -> Any:
+        if name == "__doc__":
+            return _control_doc()
+        return super().__getattribute__(name)
 
-    simhandle: str | None = None
-    duration: int | None = None
-    start_year: int | None = None
-    start_month: int | None = None
-    decay: str | None = None
-    dt: int | None = None
-    explicit_inventory: bool | None = None
-    explicit_inventory_compact: bool | None = None
-    tolerance_generic: float | None = None
-    tolerance_resource: float | None = None
-    seed: int | None = None
-    stride: int | None = None
+    @property
+    def __signature__(cls) -> Signature:
+        """Expose cached scalar fields to IPython and ``inspect.signature``."""
+
+        parameters = []
+        for field in _control_fields():
+            parameters.append(
+                Parameter(
+                    field.name,
+                    kind=Parameter.KEYWORD_ONLY,
+                    default=Parameter.empty if field.required else None,
+                    annotation=field.python_type | None,
+                )
+            )
+        return Signature(parameters, return_annotation=None)
+
+
+class Control(metaclass=_ControlMeta):
+    """Runtime documentation is derived from the active discovery cache."""
+
+    def __init__(self, **values: Any) -> None:
+        object.__setattr__(
+            self, "_fields", {field.name: field for field in _control_fields()}
+        )
+        object.__setattr__(self, "_values", {})
+        for name, value in values.items():
+            setattr(self, name, value)
+
+    @classmethod
+    def available_fields(cls) -> tuple[ControlField, ...]:
+        """Return scalar control fields from the active discovery cache."""
+
+        return _control_fields()
+
+    @classmethod
+    def describe_field(cls, name: str) -> str:
+        """Describe one supported scalar control field."""
+
+        field = next((item for item in _control_fields() if item.name == name), None)
+        if field is None:
+            available = ", ".join(item.name for item in _control_fields())
+            raise AttributeError(
+                f"Unknown control field {name!r}. Available fields: {available}."
+            )
+        optional = "required" if field.required else "optional"
+        details = [
+            f"{field.name}: {field.kind} ({optional}; XML <{field.xml_name}>)"
+        ]
+        if field.doc:
+            details.append(field.doc)
+        return "\n".join(details)
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._fields:
+            return self._values.get(name)
+        raise AttributeError(f"Control has no field {name!r}")
 
     def __setattr__(self, name: str, value: Any) -> None:
-        field = _CONTROL_FIELD_BY_NAME.get(name)
-        if field is not None and value is not None:
+        if name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+        field = self._fields.get(name)
+        if field is None:
+            available = ", ".join(self._fields)
+            raise AttributeError(
+                f"Unknown control field {name!r}. Available fields: {available}."
+            )
+        if value is not None:
             problem = _control_field_problem(field, value)
             if problem is not None:
                 raise ValueError(problem)
-        super().__setattr__(name, value)
+        self._values[name] = value
 
     def validation_problems(self) -> list[str]:
         problems = []
-        for field in CONTROL_FIELDS:
-            value = getattr(self, field.name)
+        for field in self._fields.values():
+            value = self._values.get(field.name)
             if value is None:
                 if field.required:
-                    problems.append(
-                        f"control is missing required field {field.name!r}"
-                    )
+                    problems.append(f"control is missing required field {field.name!r}")
                 continue
             problem = _control_field_problem(field, value)
             if problem is not None:
@@ -98,24 +139,24 @@ class Control:
         """Return supplied control values in Cyclus grammar order."""
 
         return tuple(
-            (field, value)
-            for field in CONTROL_FIELDS
-            if (value := getattr(self, field.name)) is not None
+            (field, self._values[field.name])
+            for field in self._fields.values()
+            if self._values.get(field.name) is not None
         )
 
 
 def _control_field_problem(field: ControlField, value: Any) -> str | None:
     label = field.name
-    if field.type_ is bool:
+    if field.kind == "bool":
         if not isinstance(value, bool):
             return f"control {label} must be a boolean"
-    elif field.type_ is int:
+    elif field.kind == "int":
         if isinstance(value, bool) or not isinstance(value, int):
             return f"control {label} must be an integer"
-    elif field.type_ is float:
+    elif field.kind == "float":
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return f"control {label} must be a number"
-    elif field.type_ is str and not isinstance(value, str):
+    elif field.kind == "string" and not isinstance(value, str):
         return f"control {label} must be a string"
     if isinstance(value, str):
         if not value.strip():

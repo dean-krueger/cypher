@@ -146,13 +146,14 @@ Cypher records warnings and proceeds with archetype metadata when possible.
 1. create a `CyclusAdapter`;
 2. collect metadata;
 3. collect base schema provenance;
-4. generate and cache the full schema;
-5. stat the executable for stale-cache detection;
-6. create a `Catalog` with `Catalog.from_metadata()`;
-7. optionally fail on compatibility warnings in strict mode;
-8. save the catalog;
-9. write environment-local type stubs;
-10. set the active in-process catalog.
+4. parse its supported scalar control fields;
+5. generate and cache the full schema;
+6. stat the executable for stale-cache detection;
+7. create a `Catalog` with `Catalog.from_metadata()`;
+8. optionally fail on compatibility warnings in strict mode;
+9. save the catalog;
+10. write environment-local type stubs;
+11. set the active in-process catalog.
 
 The result is a `DiscoveryResult` containing the catalog, the saved cache path,
 and generated stub paths.
@@ -197,6 +198,7 @@ the richer runtime annotation and generated-stub expression used for authoring.
 - executable modification time;
 - base schema path;
 - generated full schema path;
+- supported scalar control fields normalized from the base grammar;
 - discovery warnings;
 - cache format version.
 
@@ -292,11 +294,13 @@ the active environment is, and where support is incomplete.
 `discovery.write_stubs()` writes `.pyi` files under the cache root:
 
 ```text
+<cache>/stubs/cypher/__init__.pyi
 <cache>/stubs/cypher/<library>.pyi
 ```
 
-Each discovered library receives a stub module with one class per archetype.
-The generated signatures include:
+The package `__init__.pyi` describes the discovered scalar `Control` keyword
+arguments. Each discovered library receives a stub module with one class per
+archetype. The generated signatures include:
 
 - `name: str | None = ...`;
 - required fields without defaults;
@@ -412,19 +416,26 @@ and a region cannot initially deploy a facility directly.
 `core.py` defines stable Cyclus input concepts that are not discovered
 archetypes.
 
-`Control` stores top-level simulation settings. Field metadata lives in
-`CONTROL_FIELDS`, a table of `ControlField` objects. This table drives:
+`Control` stores top-level simulation settings. Discovery parses the supported
+scalar portion of the base `<control>` grammar into `ControlField` objects in
+the cached catalog; a built-in field set keeps ordinary core authoring usable
+when no discovery cache exists. This metadata drives:
 
 - assignment validation;
 - required-field validation;
 - XML field names;
 - deterministic output order.
 
-Required fields are currently duration, start year, and start month. Optional
-scalar fields include simhandle, decay, dt, explicit inventory flags,
-tolerances, seed, and stride. Validation is intentionally limited to clear
-scalar constraints: type checks, month range, nonnegative or positive numeric
-bounds, and the known decay choices.
+Cypher retains a small handwritten policy layer for `startyear` → `start_year`,
+`startmonth` → `start_month`, month bounds, and known decay choices. Other
+compatible scalar additions become available after discovery without a Cypher
+release. Complex control structures such as `solver` remain
+compatibility-report items rather than being guessed.
+
+`Control.available_fields()` and `Control.describe_field()` expose the active
+schema model at runtime. Its generated runtime signature supports IPython help,
+and discovery writes an environment-local `cypher/__init__.pyi` stub so editors
+can offer the same fields when configured to locate Cypher's stub cache.
 
 `Commodity` is a named exchange commodity plus optional solver priority.
 Commodities stringify to their names, and XML serialization writes only a

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from cypher import Catalog
-from cypher.catalog import cache_root
+from cypher.catalog import cache_root, control_fields_from_schema
 from cypher.errors import DiscoveryError
 
 
@@ -27,7 +27,32 @@ def test_catalog_round_trip(tmp_path: Path, catalog: Catalog) -> None:
     loaded = Catalog.load(path)
 
     assert loaded.to_dict() == catalog.to_dict()
-    assert json.loads(path.read_text())["format_version"] == 2
+    assert json.loads(path.read_text())["format_version"] == 3
+
+
+def test_control_fields_are_normalized_from_base_grammar() -> None:
+    fields, warnings = control_fields_from_schema(
+        """
+        <grammar xmlns="http://relaxng.org/ns/structure/1.0"
+                 xmlns:a="http://relaxng.org/ns/annotation/1.0">
+          <start><element name="simulation"><element name="control"><interleave>
+            <element name="duration"><data type="nonNegativeInteger"/></element>
+            <optional><element name="additional_scalar">
+              <a:documentation>An additional scalar setting.</a:documentation>
+              <data type="string"/>
+            </element></optional>
+            <optional><element name="solver"><interleave/></element></optional>
+          </interleave></element></element></start>
+        </grammar>
+        """
+    )
+
+    assert [(field.name, field.kind, field.required) for field in fields] == [
+        ("duration", "int", True),
+        ("additional_scalar", "string", False),
+    ]
+    assert fields[1].doc == "An additional scalar setting."
+    assert "solver" in "\n".join(warnings)
 
 
 def test_unknown_library_lists_available_libraries(catalog: Catalog) -> None:

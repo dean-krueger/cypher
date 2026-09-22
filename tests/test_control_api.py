@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 import pytest
 
 import cypher
+from cypher.catalog import ControlField
 
 
 def test_control_may_be_positional(catalog) -> None:
@@ -71,6 +73,37 @@ def test_optional_control_fields_serialize_in_grammar_order(catalog) -> None:
     <tolerance_resource>2e-06</tolerance_resource>
     <seed>20240101</seed>
     <stride>1234</stride>"""
+
+
+def test_discovered_scalar_control_field_is_validated_documented_and_serialized(
+    catalog,
+) -> None:
+    catalog.control_fields = (
+        *catalog.control_fields,
+        ControlField(
+            "additional_scalar",
+            "additional_scalar",
+            kind="string",
+            doc="An additional scalar setting discovered from the base grammar.",
+        ),
+    )
+    control = cypher.Control(
+        duration=1,
+        start_year=2000,
+        start_month=1,
+        additional_scalar="example",
+    )
+    simulation = cypher.Simulation(control, schema_path=None, catalog=catalog)
+
+    assert "additional_scalar" in inspect.signature(cypher.Control).parameters
+    assert "additional_scalar" in cypher.Control.__doc__
+    assert "base grammar" in cypher.Control.describe_field("additional_scalar")
+    assert "<additional_scalar>example</additional_scalar>" in simulation.to_xml()
+
+
+def test_unknown_control_field_is_actionable() -> None:
+    with pytest.raises(AttributeError, match="Unknown control field 'not_a_control'"):
+        cypher.Control(not_a_control=True)
 
 
 @pytest.mark.parametrize(

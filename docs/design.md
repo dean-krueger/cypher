@@ -130,6 +130,12 @@ simulation format itself, likely including:
 Handwritten core APIs may use idiomatic Python spellings such as `start_year`
 while serializing canonical Cyclus tags such as `<startyear>`.
 
+The scalar portion of the base `<control>` grammar should be discovered and
+cached with the selected Cyclus environment. `Control` keeps only small,
+documented Python conveniences and clear semantic validation policies; a
+compatible new scalar control field should not require a Cypher release.
+Complex control structures must be reported rather than inferred.
+
 ### Metadata-driven archetypes
 
 Archetype libraries and their fields should be discovered from Cyclus. The

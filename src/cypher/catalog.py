@@ -17,6 +17,59 @@ RNG = f"{{{RNG_NAMESPACE}}}"
 
 
 @dataclass(frozen=True)
+class ControlField:
+    """One supported scalar field in Cyclus's simulation control block."""
+
+    name: str
+    xml_name: str
+    required: bool = False
+    kind: str = "string"
+    minimum: int | float | None = None
+    maximum: int | float | None = None
+    choices: tuple[str, ...] = ()
+    doc: str = ""
+
+    @property
+    def python_type(self) -> type[Any]:
+        return {"bool": bool, "float": float, "int": int, "string": str}[self.kind]
+
+
+# These policies retain the small amount of Python ergonomics and semantic
+# validation that Relax NG alone cannot express.  Other scalar fields come
+# directly from the selected Cyclus control grammar.
+_CONTROL_ALIASES = {"startyear": "start_year", "startmonth": "start_month"}
+_CONTROL_POLICIES: dict[str, dict[str, Any]] = {
+    "duration": {"minimum": 0},
+    "startyear": {"minimum": 0},
+    "startmonth": {"minimum": 1, "maximum": 12},
+    "decay": {"choices": ("never", "manual", "lazy")},
+    "dt": {"minimum": 0},
+    "seed": {"minimum": 1},
+    "stride": {"minimum": 1},
+}
+
+
+DEFAULT_CONTROL_FIELDS: tuple[ControlField, ...] = (
+    ControlField("simhandle", "simhandle"),
+    ControlField("duration", "duration", required=True, kind="int", minimum=0),
+    ControlField("start_year", "startyear", required=True, kind="int", minimum=0),
+    ControlField(
+        "start_month", "startmonth", required=True, kind="int", minimum=1, maximum=12
+    ),
+    ControlField("decay", "decay", choices=("never", "manual", "lazy")),
+    ControlField("dt", "dt", kind="int", minimum=0),
+    ControlField("explicit_inventory", "explicit_inventory", kind="bool"),
+    ControlField(
+        "explicit_inventory_compact", "explicit_inventory_compact", kind="bool"
+    ),
+    ControlField("tolerance_generic", "tolerance_generic", kind="float"),
+    ControlField("tolerance_resource", "tolerance_resource", kind="float"),
+    ControlField("seed", "seed", kind="int", minimum=1),
+    ControlField("stride", "stride", kind="int", minimum=1),
+)
+
+
+@dataclass(frozen=True)
 class FieldSpec:
     """A serializable archetype input field."""
 
@@ -84,8 +137,9 @@ class Catalog:
     executable_mtime_ns: int | None = None
     base_schema_path: str | None = None
     full_schema_path: str | None = None
+    control_fields: tuple[ControlField, ...] = DEFAULT_CONTROL_FIELDS
     discovery_warnings: tuple[str, ...] = ()
-    format_version: int = 2
+    format_version: int = 3
     _libraries: dict[str, dict[str, ArchetypeSpec]] = field(
         init=False, repr=False, default_factory=dict
     )
@@ -130,6 +184,7 @@ class Catalog:
         executable_mtime_ns: int | None = None,
         base_schema_path: str | None = None,
         full_schema_path: str | None = None,
+        control_fields: tuple[ControlField, ...] = DEFAULT_CONTROL_FIELDS,
         discovery_warnings: tuple[str, ...] = (),
     ) -> Catalog:
         annotations = metadata.get("annotations")
@@ -171,6 +226,7 @@ class Catalog:
             executable_mtime_ns=executable_mtime_ns,
             base_schema_path=base_schema_path,
             full_schema_path=full_schema_path,
+            control_fields=control_fields,
             discovery_warnings=discovery_warnings,
         )
 
@@ -182,6 +238,7 @@ class Catalog:
             "executable_mtime_ns": self.executable_mtime_ns,
             "base_schema_path": self.base_schema_path,
             "full_schema_path": self.full_schema_path,
+            "control_fields": [asdict(item) for item in self.control_fields],
             "discovery_warnings": list(self.discovery_warnings),
             "archetypes": {
                 spec: asdict(archetype) for spec, archetype in self.archetypes.items()
@@ -191,7 +248,7 @@ class Catalog:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Catalog:
         format_version = data.get("format_version")
-        if format_version not in {1, 2}:
+        if format_version not in {1, 2, 3}:
             raise DiscoveryError(
                 "The discovery cache format is unsupported. Run 'cypher discover' "
                 "to refresh it."
@@ -208,6 +265,26 @@ class Catalog:
             raw_item["fields"] = tuple(fields)
             raw_item["warnings"] = tuple(raw_item.get("warnings", ()))
             archetypes[spec] = ArchetypeSpec(**raw_item)
+        raw_control_fields = data.get("control_fields")
+        if raw_control_fields is None:
+            control_fields = DEFAULT_CONTROL_FIELDS
+        elif not isinstance(raw_control_fields, list):
+            raise DiscoveryError("Cypher discovery cache has invalid control fields.")
+        else:
+            try:
+                control_fields = tuple(
+                    ControlField(
+                        **{
+                            **dict(item),
+                            "choices": tuple(dict(item).get("choices", ())),
+                        }
+                    )
+                    for item in raw_control_fields
+                )
+            except (TypeError, ValueError) as error:
+                raise DiscoveryError(
+                    "Cypher discovery cache has invalid control field metadata."
+                ) from error
         return cls(
             archetypes=archetypes,
             executable=data.get("executable"),
@@ -215,8 +292,9 @@ class Catalog:
             executable_mtime_ns=data.get("executable_mtime_ns"),
             base_schema_path=data.get("base_schema_path"),
             full_schema_path=data.get("full_schema_path"),
+            control_fields=control_fields,
             discovery_warnings=tuple(data.get("discovery_warnings", ())),
-            format_version=2,
+            format_version=3,
         )
 
     def save(self, path: Path | None = None) -> Path:
@@ -309,6 +387,109 @@ def get_catalog(*, required: bool = True) -> Catalog | None:
                 raise
             return None
     return _active_catalog
+
+
+def control_fields_from_schema(
+    schema: str,
+) -> tuple[tuple[ControlField, ...], tuple[str, ...]]:
+    """Normalize the conservative scalar subset of a Cyclus control grammar.
+
+    Complex control content is intentionally reported rather than guessed.  The
+    returned field order is the grammar's source order, used as Cypher's stable
+    XML order even though Relax NG ``interleave`` is unordered semantically.
+    """
+
+    try:
+        root = ET.fromstring(schema)
+    except ET.ParseError as error:
+        return (), (f"Could not parse the Cyclus base control grammar: {error}",)
+    control = next(
+        (
+            element
+            for element in root.iter(RNG + "element")
+            if element.get("name") == "control"
+        ),
+        None,
+    )
+    if control is None:
+        return (), ("Cyclus base grammar does not define a control block.",)
+    container = next(
+        (child for child in control if child.tag == RNG + "interleave"), None
+    )
+    if container is None:
+        return (), ("Cyclus control grammar has no supported interleave block.",)
+
+    fields: list[ControlField] = []
+    warnings: list[str] = []
+    for child in container:
+        required = child.tag != RNG + "optional"
+        element = child if required else next(
+            (item for item in child if item.tag == RNG + "element"), None
+        )
+        if element is None or element.tag != RNG + "element":
+            warnings.append("Cyclus control grammar contains an unsupported construct.")
+            continue
+        xml_name = element.get("name")
+        if not xml_name:
+            warnings.append("Cyclus control grammar contains an unnamed control field.")
+            continue
+        scalar = next(
+            (item for item in element if item.tag in {RNG + "data", RNG + "text"}),
+            None,
+        )
+        if scalar is None or any(
+            item is not scalar and not item.tag.endswith("documentation")
+            for item in element
+        ):
+            warnings.append(
+                f"control field {xml_name!r} uses an unsupported non-scalar structure"
+            )
+            continue
+        kind = _control_scalar_kind(scalar)
+        if kind is None:
+            warnings.append(
+                f"control field {xml_name!r} uses unsupported scalar type "
+                f"{scalar.get('type', 'text')!r}"
+            )
+            continue
+        policy = _CONTROL_POLICIES.get(xml_name, {})
+        fields.append(
+            ControlField(
+                name=_CONTROL_ALIASES.get(xml_name, xml_name),
+                xml_name=xml_name,
+                required=required,
+                kind=kind,
+                minimum=policy.get("minimum"),
+                maximum=policy.get("maximum"),
+                choices=policy.get("choices", ()),
+                doc=_rng_documentation(element),
+            )
+        )
+    return tuple(fields), tuple(warnings)
+
+
+def _control_scalar_kind(element: ET.Element) -> str | None:
+    if element.tag == RNG + "text":
+        return "string"
+    kinds = {
+        "boolean": "bool",
+        "decimal": "float",
+        "double": "float",
+        "float": "float",
+        "integer": "int",
+        "nonNegativeInteger": "int",
+        "positiveInteger": "int",
+        "string": "string",
+    }
+    return kinds.get(element.get("type", "string"))
+
+
+def _rng_documentation(element: ET.Element) -> str:
+    return " ".join(
+        " ".join(item.itertext()).strip()
+        for item in element
+        if item.tag.endswith("documentation")
+    ).strip()
 
 
 def _normalize_fields(
